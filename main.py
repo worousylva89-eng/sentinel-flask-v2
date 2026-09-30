@@ -68,5 +68,67 @@ def analyze():
         "signature": "SECURE_HASH_V2_UNIFIED"
     })
 
+# --- INTÉGRATION SALT EDGE SANDBOX ---
+import requests # Nécessaire pour appeler l'API Salt Edge
+
+@app.route('/salt-edge/connect', methods=['POST'])
+def connect_salt_edge():
+    """Initialise une connexion Sandbox avec Salt Edge."""
+    
+    # Vérifie que les variables d'environnement sont bien chargées
+    if not SE_LOGIN or not SE_API_KEY:
+        return jsonify({"error": "Missing Salt Edge credentials (.env)"}), 500
+        
+    data = request.get_json()
+    user_email = data.get('email', 'test_user@example.com')
+    
+    # Étape 1 : Créer un "Connect Session" chez Salt Edge
+    payload_session = {
+        "country_code": "FR",
+        "user_identifier": user_email,
+        "permissions": ["balances", "details", "transactions"],
+        "redirect_uri": "https://sentinel-flask-v2-2.onrender.com/salt-edge/callback", # URL de retour après login banque
+        "finish_redirect_uri": "https://sentinel-flask-v2-2.onrender.com/" # Où renvoyer l'user une fois fini
+    }
+    
+    headers_se = {
+        "Login": SE_LOGIN,
+        "API-key": SE_API_KEY,
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        resp_session = requests.post("https://www.saltedge.com/api/v5/connections", json=payload_session, headers=headers_se)
+        
+        if resp_session.status_code != 200:
+             return jsonify({"error": f"Salt Edge Error: {resp_session.text}"}), 500
+             
+        connection_id = resp_session.json()['data']['id']
+        
+        # Étape 2 : Obtenir l'URL de redirection vers la page de choix de banque
+        redirect_url = f"https://www.saltedge.com/sandbox/connect/{connection_id}"
+        
+        return jsonify({
+            "status": "success",
+            "message": "Session créée. Redirigez l'utilisateur vers cette URL.",
+            "redirect_url": redirect_url,
+            "connection_id": connection_id
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/salt-edge/callback', methods=['GET'])
+def salt_edge_callback():
+    """Reçu par Salt Edge après que l'utilisateur a choisi sa banque."""
+    conn_id = request.args.get('connection_id')
+    status = request.args.get('status')
+    
+    if status == 'connected':
+        # Ici, on pourrait récupérer les vraies transactions depuis Salt Edge
+        # Pour l'instant (Sandbox), on simule un succès visuel
+        return "<h2>✅ Connexion Réussie !</h2><p>Votre compte bancaire fictif est lié à Sentinel.</p><a href='/'>Retour à l'accueil</a>"
+    else:
+        return "<h2>❌ Échec de connexion.</h2><a href='/'>Réessayer</a>"
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
