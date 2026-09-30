@@ -1,3 +1,13 @@
+import os
+from dotenv import load_dotenv
+
+# Charge les variables depuis le fichier .env
+load_dotenv()
+
+# Récupère les clés Salt Edge depuis les variables d'environnement
+SE_LOGIN = os.getenv("SE_LOGIN")
+SE_API_KEY = os.getenv("SE_API_KEY")
+
 from flask import Flask, request, jsonify, send_from_directory
 import os
 
