@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Sentinel - Analyse Financière IA</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 10px; }
+        p.subtitle { text-align: center; color: #7f8c8d; margin-bottom: 30px; }
+        textarea { width: 100%; height: 150px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; resize: vertical; }
+        button { width: 100%; padding: 15px; background-color: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: background 0.3s; margin-top: 20px; font-weight: bold; }
+        button:hover { background-color: #c0392b; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        #result { margin-top: 30px; display: none; animation: fadeIn 0.5s; }
+        .card { background: #fff9db; border-left: 5px solid #f1c40f; padding: 15px; margin-bottom: 15px; border-radius: 4px; }
+        .stat-box { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed #eee; }
+        .big-number { font-size: 24px; font-weight: bold; color: #e74c3c; }
+        .green-text { color: #27ae60; font-weight: bold; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .loading { text-align: center; color: #3498db; display: none; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🛡️ Agent Sentinel</h1>
+    <p class="subtitle">Détectez vos abonnements cachés et récupérez votre pouvoir d'achat.</p>
+
+    <label for="csvInput"><strong>Collez vos transactions (Format CSV ou JSON simplifié)</strong></label><br><br>
+    <textarea id="csvInput" placeholder="Exemple :&#10;NETFLIX PREMIUM,-17.99&#10;CARREFOUR MARKET,-50.00&#10;SPOTIFY FAMILY,-14.99"></textarea>
+
+    <button id="analyzeBtn" onclick="sendToAI()">⚡ ANALYSER MES COMPTES</button>
+    
+    <div class="loading" id="loader">🤖 L'IA réfléchit...</div>
+
+    <div id="result">
+        <hr>
+        <h3 style="color:#2c3e50;">📊 Rapport d'Audit</h3>
+        
+        <div class="stat-box">
+            <span>Total Scanné :</span>
+            <span id="totalLines">0 lignes</span>
+        </div>
+        <div class="stat-box">
+            <span>Abonnements Détectés :</span>
+            <span id="subsCount" class="big-number">0</span>
+        </div>
+        <div class="stat-box">
+            <span>Perte Mensuelle Estimée :</span>
+            <span id="monthlyLoss" class="big-number">0 €</span>
+        </div>
+        <div class="stat-box" style="background:#e8f8f5; padding:10px; border-radius:5px; margin-top:10px;">
+            <span>Votre Gain Potentiel (Net) :</span>
+            <span id="netGain" class="green-text">+0 €/mois</span>
+        </div>
+        <div class="stat-box">
+            <span>Commission Plateforme (15%) :</span>
+            <span id="commission">0 €</span>
+        </div>
+
+        <h4>Détails des fuites :</h4>
+        <div id="itemsList"></div>
+        
+        <p style="font-size:12px; color:#aaa; text-align:center; margin-top:20px;">Signature cryptographique vérifiée ✅</p>
+    </div>
+</div>
+
+<script>
+    // L'URL DE TON SERVEUR RENDER
+    const API_URL = "https://sentinel-flask-live.onrender.com/analyze";
+
+    async function sendToAI() {
+        const inputText = document.getElementById('csvInput').value.trim();
+        if (!inputText) return alert("Veuillez coller des données !");
+
+        const btn = document.getElementById('analyzeBtn');
+        const loader = document.getElementById('loader');
+        const resultDiv = document.getElementById('result');
+
+        // UI Feedback
+        btn.disabled = true;
+        btn.innerText = "Analyse en cours...";
+        loader.style.display = "block";
+        resultDiv.style.display = "none";
+
+        try {
+            // 1. Parser le texte brut en objet JSON attendu par l'API
+            // Format attendu par l'API : { user_id: "...", transactions: [{date, label, amount}] }
+            let lines = inputText.split('\n');
+            let transactions = [];
+            
+            lines.forEach(line => {
+                let parts = line.split(',');
+                if(parts.length >= 2) {
+                    transactions.push({
+                        date: new Date().toISOString().split('T')[0], // Date du jour simulée
+                        label: parts[0].trim(),
+                        amount: parseFloat(parts[1]) || 0
+                    });
+                }
+            });
+
+            if(transactions.length === 0) throw new Error("Aucune transaction valide trouvée.");
+
+            const payload = {
+                user_id: "WEB_USER_" + Math.floor(Math.random()*1000),
+                transactions: transactions
+            };
+
+            // 2. Envoyer la requête POST à Render
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
+            
+            const data = await response.json();
+            
+            // 3. Afficher les résultats
+            renderResults(data.data);
+
+        } catch (error) {
+            console.error(error);
+            alert("Impossible de contacter le serveur. Vérifiez votre connexion ou attendez que le serveur se réveille (peut prendre 50s).");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "⚡ ANALYSER MES COMPTES";
+            loader.style.display = "none";
+        }
+    }
+
+    function renderResults(reportData) {
+        const resDiv = document.getElementById('result');
+        resDiv.style.display = "block";
+
+        // Remplir les stats globales
+        document.getElementById('totalLines').innerText = reportData.analysis_summary.total_scanned_lines + " lignes";
+        document.getElementById('subsCount').innerText = reportData.analysis_summary.subscriptions_detected;
+        document.getElementById('monthlyLoss').innerText = reportData.analysis_summary.monthly_loss_identified.toFixed(2) + " €";
+        document.getElementById('netGain').innerText = "+" + reportData.financial_action.client_savings_net_monthly.toFixed(2) + " €/mois";
+        document.getElementById('commission').innerText = reportData.financial_action.platform_revenue_gross.toFixed(2) + " €";
+
+        // Remplir la liste détaillée
+        const listContainer = document.getElementById('itemsList');
+        listContainer.innerHTML = ""; // Clear previous
+        
+        reportData.detected_items_anonymized.forEach(item => {
+            const card = document.createElement('div');
+            card.className = "card";
+            card.innerHTML = `
+                <strong>${item.category_code}</strong><br>
+                Montant : ${item.amount_monthly.toFixed(2)} €/mois<br>
+                Ref Hash : <code>${item.ref_hash}</code>
+            `;
+            listContainer.appendChild(card);
+        });
+    }
+</script>
+
+</body>
+</html>
