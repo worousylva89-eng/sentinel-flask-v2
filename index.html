@@ -69,7 +69,7 @@
 
 <script>
     // L'URL DE TON SERVEUR RENDER
-    const API_URL = "https://sentinel-flask-live.onrender.com/analyze";
+    const API_URL = "/analyze"; // Chemin relatif magique !
 
     async function sendToAI() {
         const inputText = document.getElementById('csvInput').value.trim();
