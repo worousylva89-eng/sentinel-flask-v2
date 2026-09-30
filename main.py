@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS # Importation de la bibliothèque CORS
 
 app = Flask(__name__)
+CORS(app) # ACTIVATION DE CORS (La clé magique !)
 
 @app.route('/')
 def home():
-    return jsonify({"status": "ok", "message": "Sentinel v2 is alive"})
+    return jsonify({"status": "ok", "message": "Sentinel v2 is alive with CORS enabled"})
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
@@ -12,13 +14,49 @@ def analyze():
     if not data:
         return jsonify({"error": "No data"}), 400
     
-    # Calcul simple pour tester
-    total = sum(abs(t['amount']) for t in data.get('transactions', []))
+    # Logique métier simplifiée mais robuste
+    transactions = data.get('transactions', [])
+    
+    mots_cles = ["NETFLIX", "FITNESS", "GYM", "SPOTIFY", "PREMIUM", "SUBSCRIPTION"]
+    detected = []
+    total_loss = 0
+    
+    for t in transactions:
+        label_upper = str(t.get('label', '')).upper()
+        amount = float(t.get('amount', 0))
+        
+        # On vérifie si c'est un abonnement ET une dépense (montant négatif)
+        if any(k in label_upper for k in mots_cles) and amount < 0:
+            detected.append({
+                "ref_hash": hash(label_upper) % 100000000, # Hash simple
+                "amount_monthly": abs(amount),
+                "category_code": "REC_SUB_STREAMING" if "NETFLIX" in label_upper or "SPOTIFY" in label_upper else "REC_SUB_OTHER"
+            })
+            total_loss += abs(amount)
+            
+    commission = round(total_loss * 0.15, 2)
+    net_gain = round(total_loss - commission, 2)
+    
+    response_data = {
+        "analysis_summary": {
+            "total_scanned_lines": len(transactions),
+            "subscriptions_detected": len(detected),
+            "monthly_loss_identified": round(total_loss, 2),
+            "yearly_loss_projected": round(total_loss * 12, 2)
+        },
+        "financial_action": {
+            "service_fee_rate": 0.15,
+            "client_savings_net_monthly": net_gain,
+            "platform_revenue_gross": commission
+        },
+        "detected_items_anonymized": detected
+    }
     
     return jsonify({
         "status": "success",
-        "total_processed": total,
-        "commission_15pct": round(total * 0.15, 2)
+        "message": "Analyse terminée avec succès.",
+        "data": response_data,
+        "signature": "SECURE_HASH_V2"
     })
 
 if __name__ == '__main__':
