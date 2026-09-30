@@ -1,20 +1,20 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS # Importation de la bibliothèque CORS
+from flask import Flask, request, jsonify, send_from_directory
+import os
 
-app = Flask(__name__)
-CORS(app) # ACTIVATION DE CORS (La clé magique !)
+app = Flask(__name__, static_folder='.') # On dit à Flask de chercher les fichiers ici
 
+# Route principale : Affiche index.html
 @app.route('/')
 def home():
-    return jsonify({"status": "ok", "message": "Sentinel v2 is alive with CORS enabled"})
+    return send_from_directory('.', 'index.html')
 
+# Route API : Analyse les données
 @app.route('/analyze', methods=['POST'])
 def analyze():
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data"}), 400
     
-    # Logique métier simplifiée mais robuste
     transactions = data.get('transactions', [])
     
     mots_cles = ["NETFLIX", "FITNESS", "GYM", "SPOTIFY", "PREMIUM", "SUBSCRIPTION"]
@@ -25,10 +25,9 @@ def analyze():
         label_upper = str(t.get('label', '')).upper()
         amount = float(t.get('amount', 0))
         
-        # On vérifie si c'est un abonnement ET une dépense (montant négatif)
         if any(k in label_upper for k in mots_cles) and amount < 0:
             detected.append({
-                "ref_hash": hash(label_upper) % 100000000, # Hash simple
+                "ref_hash": hash(label_upper) % 100000000,
                 "amount_monthly": abs(amount),
                 "category_code": "REC_SUB_STREAMING" if "NETFLIX" in label_upper or "SPOTIFY" in label_upper else "REC_SUB_OTHER"
             })
@@ -54,9 +53,9 @@ def analyze():
     
     return jsonify({
         "status": "success",
-        "message": "Analyse terminée avec succès.",
+        "message": "Analyse terminée.",
         "data": response_data,
-        "signature": "SECURE_HASH_V2"
+        "signature": "SECURE_HASH_V2_UNIFIED"
     })
 
 if __name__ == '__main__':
