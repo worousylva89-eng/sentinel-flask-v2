@@ -1,32 +1,24 @@
- from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Route Racine (Test de vie)
-@app.route('/', methods=['GET'])
+@app.route('/')
 def home():
     return jsonify({"status": "ok", "message": "Sentinel v2 is alive"})
 
-# Route Analyse (Le vrai travail)
 @app.route('/analyze', methods=['POST'])
 def analyze():
     data = request.get_json()
-    
     if not data:
-        return jsonify({"error": "No data sent"}), 400
-        
-    user_id = data.get('user_id', 'Unknown')
-    transactions = data.get('transactions', [])
+        return jsonify({"error": "No data"}), 400
     
-    # Logique simplifiée pour le test
-    total_spent = sum(abs(t['amount']) for t in transactions if t['amount'] < 0)
+    # Calcul simple pour tester
+    total = sum(abs(t['amount']) for t in data.get('transactions', []))
     
     return jsonify({
         "status": "success",
-        "user": user_id,
-        "total_transactions": len(transactions),
-        "estimated_loss_monthly": round(total_spent / 12, 2), # Simulation bête
-        "commission_15_percent": round((total_spent / 12) * 0.15, 2)
+        "total_processed": total,
+        "commission_15pct": round(total * 0.15, 2)
     })
 
 if __name__ == '__main__':
