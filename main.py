@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import requests
 import json
 import random
+from datetime import datetime, timedelta
 
 # --- CONFIGURATION ENVIRONNEMENT ---
 load_dotenv()
@@ -13,15 +14,13 @@ SE_API_KEY = os.getenv("SE_API_KEY")
 
 app = Flask(__name__, static_folder='.')
 
-# Route principale : Affiche index.html
 @app.route('/')
 def home():
     return send_from_directory('.', 'index.html')
 
 # --- LOGIQUE MÉTIER CENTRALE (ANALYSE) ---
-# Extraite pour être réutilisable par la simulation et l'API manuelle
 def perform_analysis(transactions_list):
-    mots_cles = ["NETFLIX", "FITNESS", "GYM", "SPOTIFY", "PREMIUM", "SUBSCRIPTION", "AMAZON PRIME", "APPLE MUSIC"]
+    mots_cles = ["NETFLIX", "FITNESS", "GYM", "SPOTIFY", "PREMIUM", "SUBSCRIPTION", "AMAZON PRIME", "APPLE MUSIC", "DISNEY+", "CANAL+"]
     detected = []
     total_loss = 0
 
@@ -61,6 +60,47 @@ def perform_analysis(transactions_list):
         "detected_items_anonymized": detected
     }
 
+# --- GENERATEUR DE DONNEES BANCAIRES FICTIVES DYNAMIQUES ---
+def generate_random_bank_transactions(count=8):
+    """Simule un relevé bancaire réaliste avec variations."""
+    base_date = datetime.now() - timedelta(days=random.randint(1, 30))
+    
+    templates = [
+        {"label_template": "NETFLIX PREMIUM SUBSCRIPTION", "min_amt": 17.99, "max_amt": 19.99},
+        {"label_template": "SPOTIFY FAMILY PLAN", "min_amt": 14.99, "max_amt": 16.99},
+        {"label_template": "BASIC-FIT GYM MEMBERSHIP", "min_amt": 29.99, "max_amt": 34.99},
+        {"label_template": "AMAZON PRIME DELIVERY", "min_amt": 5.99, "max_amt": 7.99},
+        {"label_template": "CANAL+ SPORT STREAMING", "min_amt": 19.99, "max_amt": 24.99},
+        {"label_template": "CARREFOUR MARKET GROCERY", "min_amt": 40.00, "max_amt": 80.00}, # Non-abo
+        {"label_template": "EDF ELECTRICITY BILL", "min_amt": 70.00, "max_amt": 100.00}, # Non-abo standard
+        {"label_template": "SALARY TRANSFER INCOME", "min_amt": 2000.00, "max_amt": 3000.00} # Positif
+    ]
+    
+    transactions = []
+    selected_templates = random.sample(templates, min(count, len(templates)))
+    
+    for i, tmpl in enumerate(selected_templates):
+        date_offset = i * random.randint(1, 5)
+        txn_date = (base_date + timedelta(days=date_offset)).strftime("%Y-%m-%d")
+        
+        # Variation aléatoire +/- 10%
+        variation = random.uniform(0.9, 1.1)
+        raw_amount = random.uniform(tmpl["min_amt"], tmpl["max_amt"]) * variation
+        
+        # Arrondir à 2 décimales, négatif sauf salaire
+        is_income = "INCOME" in tmpl["label_template"].upper()
+        final_amount = round(raw_amount, 2)
+        if not is_income:
+            final_amount = -final_amount
+            
+        transactions.append({
+            "date": txn_date,
+            "label": tmpl["label_template"],
+            "amount": final_amount
+        })
+        
+    return transactions
+
 # --- ROUTE API MANUELLE (CSV) ---
 @app.route('/analyze', methods=['POST'])
 def analyze_manual():
@@ -78,36 +118,19 @@ def analyze_manual():
         "signature": "SECURE_HASH_V2_UNIFIED"
     })
 
-# --- SIMULATEUR BANCAIRE SALT EDGE (MODE DEMO AVANCÉ) ---
-# Remplace l'appel réseau externe par une génération de données locales fiables
+# --- SIMULATEUR BANCAIRE SALT EDGE (MODE DEMO AVANCÉ & DYNAMIQUE) ---
 @app.route('/salt-edge/connect', methods=['POST'])
 def connect_salt_edge_simulated():
-    """
-    Simule une connexion bancaire réussie.
-    Génère des transactions fictives réalistes et les analyse immédiatement.
-    """
-    print(f"DEBUG INFO: Initiating Salt Edge Simulation Mode...")
+    print(f"DEBUG INFO: Initiating Dynamic Salt Edge Simulation Mode...")
     
-    # 1. Génération de fausses transactions bancaires réalistes
-    simulated_transactions = [
-        {"date": "2026-09-01", "label": "NETFLIX PREMIUM SUBSCRIPTION", "amount": -17.99},
-        {"date": "2026-09-02", "label": "CARREFOUR MARKET GROCERY", "amount": -54.20}, # Non-abo
-        {"date": "2026-09-03", "label": "SPOTIFY FAMILY PLAN", "amount": -14.99},
-        {"date": "2026-09-05", "label": "BASIC-FIT GYM MEMBERSHIP", "amount": -29.99},
-        {"date": "2026-09-08", "label": "EDF ELECTRICITY BILL", "amount": -85.00}, # Non-abo standard detection
-        {"date": "2026-09-10", "label": "AMAZON PRIME DELIVERY", "amount": -6.99},
-        {"date": "2026-09-12", "label": "CANAL+ SPORT STREAMING", "amount": -19.99},
-        {"date": "2026-09-15", "label": "SALARY TRANSFER INCOME", "amount": 2500.00} # Positif ignoré
-    ]
-
-    # 2. Exécution de la logique d'analyse réelle sur ces données
+    # Génère des transactions différentes à CHAQUE appel !
+    simulated_transactions = generate_random_bank_transactions(count=8)
+    
     analysis_result = perform_analysis(simulated_transactions)
     
-    # 3. Préparation de la réponse JSON pour le Frontend
-    # On retourne directement les résultats comme si c'était venu de Salt Edge
     response_payload = {
         "status": "success",
-        "source": "SALT_EDGE_SIMULATION_MODE",
+        "source": "SALT_EDGE_SIMULATION_MODE_DYNAMIC",
         "message": "Connexion sécurisée établie. Données analysées.",
         "data": analysis_result,
         "raw_transactions_count": len(simulated_transactions),
@@ -118,11 +141,8 @@ def connect_salt_edge_simulated():
 
 @app.route('/salt-edge/callback', methods=['GET'])
 def salt_edge_callback():
-    """Endpoint conservé pour compatibilité future avec vraie API."""
     return "<h2>✅ Callback Endpoint Active</h2><p>Prêt pour intégration production.</p><a href='/'>Retour Accueil</a>"
 
 if __name__ == '__main__':
-    # CORRECTION CRUCIALE POUR RENDER :
-    # On lit la variable PORT fournie par Render au lieu de forcer 8000
     port = int(os.environ.get('PORT', 8000))
     app.run(host='0.0.0.0', port=port)
