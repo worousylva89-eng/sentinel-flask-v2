@@ -9,10 +9,21 @@
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h1 { color: #2c3e50; text-align: center; margin-bottom: 10px; }
         p.subtitle { text-align: center; color: #7f8c8d; margin-bottom: 30px; }
+        
+        /* Styles pour la section Banque */
+        .bank-section { background: #f0fdf4; border: 2px solid #bbf7d0; padding: 20px; border-radius: 8px; margin-bottom: 25px; text-align: center; }
+        .btn-bank { width: 100%; padding: 15px; background-color: #16a34a; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: all 0.3s ease; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-bank:hover { background-color: #15803d; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3); }
+        .divider { display: flex; align-items: center; color: #94a3b8; font-size: 14px; margin: 20px 0; text-transform: uppercase; letter-spacing: 1px; }
+        .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; }
+        .divider:not(:empty)::before { margin-right: 10px; }
+        .divider:not(:empty)::after { margin-left: 10px; }
+
         textarea { width: 100%; height: 150px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; resize: vertical; }
-        button { width: 100%; padding: 15px; background-color: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: background 0.3s; margin-top: 20px; font-weight: bold; }
-        button:hover { background-color: #c0392b; }
-        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        button.analyze-btn { width: 100%; padding: 15px; background-color: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: background 0.3s; margin-top: 20px; font-weight: bold; }
+        button.analyze-btn:hover { background-color: #c0392b; }
+        button:disabled { opacity: 0.7; cursor: not-allowed; }
+        
         #result { margin-top: 30px; display: none; animation: fadeIn 0.5s; }
         .card { background: #fff9db; border-left: 5px solid #f1c40f; padding: 15px; margin-bottom: 15px; border-radius: 4px; }
         .stat-box { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed #eee; }
@@ -28,17 +39,31 @@
     <h1>🛡️ Agent Sentinel</h1>
     <p class="subtitle">Détectez vos abonnements cachés et récupérez votre pouvoir d'achat.</p>
 
-    <label for="csvInput"><strong>Collez vos transactions (Format CSV ou JSON simplifié)</strong></label><br><br>
+    <!-- SECTION 1 : CONNEXION BANCAIRE DIRECTE (NOUVEAU) -->
+    <div class="bank-section">
+        <h3 style="margin-top:0; color:#166534;">🔒 Connexion Sécurisée Open Banking</h3>
+        <p style="font-size:14px; color:#475569; margin-bottom:15px;">Analysez automatiquement vos comptes réels via Salt Edge (Sandbox).</p>
+        
+        <button id="connectBankBtn" onclick="startSaltEdge()" class="btn-bank">
+            <span>🏦 SE CONNECTER À MA BANQUE</span>
+        </button>
+        <div id="bankStatus" style="display:none; margin-top:10px; font-size:13px; color:#dc2626;"></div>
+    </div>
+
+    <div class="divider">OU SAISIE MANUELLE</div>
+
+    <!-- SECTION 2 : SAISIE CSV CLASSIQUE (EXISTANT) -->
+    <label for="csvInput"><strong>Collez vos transactions (Format CSV)</strong></label><br><br>
     <textarea id="csvInput" placeholder="Exemple :&#10;NETFLIX PREMIUM,-17.99&#10;CARREFOUR MARKET,-50.00&#10;SPOTIFY FAMILY,-14.99"></textarea>
 
-    <button id="analyzeBtn" onclick="sendToAI()">⚡ ANALYSER MES COMPTES</button>
-    
+    <button id="analyzeBtn" onclick="sendToAI()" class="analyze-btn">⚡ ANALYSER MES COMPTES</button>
+
     <div class="loading" id="loader">🤖 L'IA réfléchit...</div>
 
     <div id="result">
         <hr>
         <h3 style="color:#2c3e50;">📊 Rapport d'Audit</h3>
-        
+
         <div class="stat-box">
             <span>Total Scanné :</span>
             <span id="totalLines">0 lignes</span>
@@ -62,14 +87,53 @@
 
         <h4>Détails des fuites :</h4>
         <div id="itemsList"></div>
-        
+
         <p style="font-size:12px; color:#aaa; text-align:center; margin-top:20px;">Signature cryptographique vérifiée ✅</p>
     </div>
 </div>
 
 <script>
-    // L'URL DE TON SERVEUR RENDER
-    const API_URL = "/analyze"; // Chemin relatif magique !
+    // --- LOGIQUE SALT EDGE (NOUVEAU) ---
+    async function startSaltEdge() {
+        const btn = document.getElementById('connectBankBtn');
+        const statusDiv = document.getElementById('bankStatus');
+        
+        btn.disabled = true;
+        btn.innerHTML = "⏳ Initialisation sécurisée...";
+        statusDiv.style.display = "block";
+        statusDiv.innerText = "Contact de Salt Edge Sandbox...";
+
+        try {
+            // Appel à notre route Flask /salt-edge/connect
+            const response = await fetch('/salt-edge/connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: "demo_user@sentinel.com" }) 
+            });
+
+            if (!response.ok) throw new Error("Erreur serveur");
+            
+            const data = await response.json();
+            
+            if(data.redirect_url) {
+                statusDiv.innerHTML = "✅ Session créée ! Redirection vers la banque fictive...";
+                setTimeout(() => {
+                    window.location.href = data.redirect_url; // REDIRECTION VERS SALT EDGE
+                }, 1500);
+            } else {
+                throw new Error("URL de redirection manquante");
+            }
+
+        } catch (error) {
+            console.error(error);
+            statusDiv.innerHTML = "❌ Erreur : Impossible de contacter Salt Edge.";
+            btn.disabled = false;
+            btn.innerHTML = "<span>🏦 RÉESSAYER LA CONNEXION</span>";
+        }
+    }
+
+    // --- LOGIQUE ANALYSE MANUELLE (EXISTANT) ---
+    const API_URL = "/analyze"; 
 
     async function sendToAI() {
         const inputText = document.getElementById('csvInput').value.trim();
@@ -79,23 +143,20 @@
         const loader = document.getElementById('loader');
         const resultDiv = document.getElementById('result');
 
-        // UI Feedback
         btn.disabled = true;
         btn.innerText = "Analyse en cours...";
         loader.style.display = "block";
         resultDiv.style.display = "none";
 
         try {
-            // 1. Parser le texte brut en objet JSON attendu par l'API
-            // Format attendu par l'API : { user_id: "...", transactions: [{date, label, amount}] }
             let lines = inputText.split('\n');
             let transactions = [];
-            
+
             lines.forEach(line => {
                 let parts = line.split(',');
                 if(parts.length >= 2) {
                     transactions.push({
-                        date: new Date().toISOString().split('T')[0], // Date du jour simulée
+                        date: new Date().toISOString().split('T')[0],
                         label: parts[0].trim(),
                         amount: parseFloat(parts[1]) || 0
                     });
@@ -109,7 +170,6 @@
                 transactions: transactions
             };
 
-            // 2. Envoyer la requête POST à Render
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -117,10 +177,8 @@
             });
 
             if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
-            
+
             const data = await response.json();
-            
-            // 3. Afficher les résultats
             renderResults(data.data);
 
         } catch (error) {
@@ -137,17 +195,15 @@
         const resDiv = document.getElementById('result');
         resDiv.style.display = "block";
 
-        // Remplir les stats globales
         document.getElementById('totalLines').innerText = reportData.analysis_summary.total_scanned_lines + " lignes";
         document.getElementById('subsCount').innerText = reportData.analysis_summary.subscriptions_detected;
         document.getElementById('monthlyLoss').innerText = reportData.analysis_summary.monthly_loss_identified.toFixed(2) + " €";
         document.getElementById('netGain').innerText = "+" + reportData.financial_action.client_savings_net_monthly.toFixed(2) + " €/mois";
         document.getElementById('commission').innerText = reportData.financial_action.platform_revenue_gross.toFixed(2) + " €";
 
-        // Remplir la liste détaillée
         const listContainer = document.getElementById('itemsList');
-        listContainer.innerHTML = ""; // Clear previous
-        
+        listContainer.innerHTML = ""; 
+
         reportData.detected_items_anonymized.forEach(item => {
             const card = document.createElement('div');
             card.className = "card";
