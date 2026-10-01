@@ -11,8 +11,8 @@
         p.subtitle { text-align: center; color: #7f8c8d; margin-bottom: 30px; }
         
         /* Styles pour la section Banque */
-        .bank-section { background: #f0fdf4; border: 2px solid #bbf7d0; padding: 20px; border-radius: 8px; margin-bottom: 25px; text-align: center; }
-        .btn-bank { width: 100%; padding: 15px; background-color: #16a34a; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: all 0.3s ease; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .bank-section { background: #f0fdf4; border: 2px solid #bbf7d0; padding: 20px; border-radius: 8px; margin-bottom: 25px; text-align: center; position: relative; overflow: hidden; }
+        .btn-bank { width: 100%; padding: 15px; background-color: #16a34a; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: all 0.3s ease; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; z-index: 2;}
         .btn-bank:hover { background-color: #15803d; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3); }
         .divider { display: flex; align-items: center; color: #94a3b8; font-size: 14px; margin: 20px 0; text-transform: uppercase; letter-spacing: 1px; }
         .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; }
@@ -31,6 +31,14 @@
         .green-text { color: #27ae60; font-weight: bold; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .loading { text-align: center; color: #3498db; display: none; margin-top: 10px; }
+        
+        /* Animation de scan bancaire */
+        .scan-overlay {
+            position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(22, 163, 74, 0.2), transparent);
+            animation: scanMove 2s infinite; z-index: 1; pointer-events: none;
+        }
+        @keyframes scanMove { 0% { left: -100%; } 100% { left: 100%; } }
     </style>
 </head>
 <body>
@@ -39,10 +47,11 @@
     <h1>🛡️ Agent Sentinel</h1>
     <p class="subtitle">Détectez vos abonnements cachés et récupérez votre pouvoir d'achat.</p>
 
-    <!-- SECTION 1 : CONNEXION BANCAIRE DIRECTE (NOUVEAU) -->
-    <div class="bank-section">
+    <!-- SECTION 1 : CONNEXION BANCAIRE DIRECTE (SIMULATION) -->
+    <div class="bank-section" id="bankSection">
+        <div class="scan-overlay" style="display:none;" id="scanEffect"></div>
         <h3 style="margin-top:0; color:#166534;">🔒 Connexion Sécurisée Open Banking</h3>
-        <p style="font-size:14px; color:#475569; margin-bottom:15px;">Analysez automatiquement vos comptes réels via Salt Edge (Sandbox).</p>
+        <p style="font-size:14px; color:#475569; margin-bottom:15px;">Analysez automatiquement vos comptes réels via protocole sécurisé (Mode Démo).</p>
         
         <button id="connectBankBtn" onclick="startSaltEdge()" class="btn-bank">
             <span>🏦 SE CONNECTER À MA BANQUE</span>
@@ -52,7 +61,7 @@
 
     <div class="divider">OU SAISIE MANUELLE</div>
 
-    <!-- SECTION 2 : SAISIE CSV CLASSIQUE (EXISTANT) -->
+    <!-- SECTION 2 : SAISIE CSV CLASSIQUE -->
     <label for="csvInput"><strong>Collez vos transactions (Format CSV)</strong></label><br><br>
     <textarea id="csvInput" placeholder="Exemple :&#10;NETFLIX PREMIUM,-17.99&#10;CARREFOUR MARKET,-50.00&#10;SPOTIFY FAMILY,-14.99"></textarea>
 
@@ -93,18 +102,26 @@
 </div>
 
 <script>
-    // --- LOGIQUE SALT EDGE (NOUVEAU) ---
+    // --- LOGIQUE SALT EDGE (VERSION SIMULATION LOCALE) ---
     async function startSaltEdge() {
         const btn = document.getElementById('connectBankBtn');
         const statusDiv = document.getElementById('bankStatus');
+        const scanEffect = document.getElementById('scanEffect');
+        const resultDiv = document.getElementById('result');
         
+        // UI Feedback Visuel
         btn.disabled = true;
-        btn.innerHTML = "⏳ Initialisation sécurisée...";
+        btn.innerHTML = "⏳ Authentification sécurisée...";
         statusDiv.style.display = "block";
-        statusDiv.innerText = "Contact de Salt Edge Sandbox...";
+        statusDiv.innerText = "Connexion au flux bancaire chiffré...";
+        statusDiv.style.color = "#16a34a"; // Vert pendant le process
+        scanEffect.style.display = "block"; // Active l'animation de balayage
+        
+        // Masquer les anciens résultats si présents
+        resultDiv.style.display = "none";
 
         try {
-            // Appel à notre route Flask /salt-edge/connect
+            // Appel à notre route Flask /salt-edge/connect (qui renvoie maintenant les DATA directement)
             const response = await fetch('/salt-edge/connect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -115,20 +132,36 @@
             
             const data = await response.json();
             
-            if(data.redirect_url) {
-                statusDiv.innerHTML = "✅ Session créée ! Redirection vers la banque fictive...";
+            // Vérifie si on a bien reçu des données d'analyse
+            if(data.status === 'success' && data.data) {
+                statusDiv.innerText = "✅ Accès accordé. Analyse en cours...";
+                
+                // Petit délai dramatique avant d'afficher le rapport
                 setTimeout(() => {
-                    window.location.href = data.redirect_url; // REDIRECTION VERS SALT EDGE
+                    renderResults(data.data); // Affiche le tableau de bord
+                    
+                    // Nettoyage UI
+                    scanEffect.style.display = "none";
+                    btn.disabled = false;
+                    btn.innerHTML = "<span>🔄 RECHARGER UNE AUTRE BANQUE</span>";
+                    statusDiv.style.display = "none";
+                    
+                    // Scroll fluide vers le résultat
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                    
                 }, 1500);
+                
             } else {
-                throw new Error("URL de redirection manquante");
+                throw new Error("Structure de réponse invalide");
             }
 
         } catch (error) {
             console.error(error);
-            statusDiv.innerHTML = "❌ Erreur : Impossible de contacter Salt Edge.";
+            statusDiv.innerHTML = "❌ Erreur technique : Impossible d'établir la liaison.";
+            statusDiv.style.color = "#dc2626";
             btn.disabled = false;
             btn.innerHTML = "<span>🏦 RÉESSAYER LA CONNEXION</span>";
+            scanEffect.style.display = "none";
         }
     }
 
