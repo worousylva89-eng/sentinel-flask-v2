@@ -122,4 +122,7 @@ def salt_edge_callback():
     return "<h2>✅ Callback Endpoint Active</h2><p>Prêt pour intégration production.</p><a href='/'>Retour Accueil</a>"
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
+    # CORRECTION CRUCIALE POUR RENDER :
+    # On lit la variable PORT fournie par Render au lieu de forcer 8000
+    port = int(os.environ.get('PORT', 8000))
+    app.run(host='0.0.0.0', port=port)
