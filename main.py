@@ -5,14 +5,22 @@ import requests
 import json
 import random
 from datetime import datetime, timedelta
+import stripe # Import Stripe
 
 # --- CONFIGURATION ENVIRONNEMENT ---
 load_dotenv()
 
 SE_LOGIN = os.getenv("SE_LOGIN")
 SE_API_KEY = os.getenv("SE_API_KEY")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 
 app = Flask(__name__, static_folder='.')
+
+# Configure Stripe
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
+else:
+    print("WARNING: STRIPE_SECRET_KEY missing in Render Environment Variables!")
 
 @app.route('/')
 def home():
@@ -62,7 +70,6 @@ def perform_analysis(transactions_list):
 
 # --- GENERATEUR DE DONNEES BANCAIRES FICTIVES DYNAMIQUES ---
 def generate_random_bank_transactions(count=8):
-    """Simule un relevé bancaire réaliste avec variations."""
     base_date = datetime.now() - timedelta(days=random.randint(1, 30))
     
     templates = [
@@ -71,9 +78,9 @@ def generate_random_bank_transactions(count=8):
         {"label_template": "BASIC-FIT GYM MEMBERSHIP", "min_amt": 29.99, "max_amt": 34.99},
         {"label_template": "AMAZON PRIME DELIVERY", "min_amt": 5.99, "max_amt": 7.99},
         {"label_template": "CANAL+ SPORT STREAMING", "min_amt": 19.99, "max_amt": 24.99},
-        {"label_template": "CARREFOUR MARKET GROCERY", "min_amt": 40.00, "max_amt": 80.00}, # Non-abo
-        {"label_template": "EDF ELECTRICITY BILL", "min_amt": 70.00, "max_amt": 100.00}, # Non-abo standard
-        {"label_template": "SALARY TRANSFER INCOME", "min_amt": 2000.00, "max_amt": 3000.00} # Positif
+        {"label_template": "CARREFOUR MARKET GROCERY", "min_amt": 40.00, "max_amt": 80.00}, 
+        {"label_template": "EDF ELECTRICITY BILL", "min_amt": 70.00, "max_amt": 100.00}, 
+        {"label_template": "SALARY TRANSFER INCOME", "min_amt": 2000.00, "max_amt": 3000.00} 
     ]
     
     transactions = []
@@ -83,11 +90,9 @@ def generate_random_bank_transactions(count=8):
         date_offset = i * random.randint(1, 5)
         txn_date = (base_date + timedelta(days=date_offset)).strftime("%Y-%m-%d")
         
-        # Variation aléatoire +/- 10%
         variation = random.uniform(0.9, 1.1)
         raw_amount = random.uniform(tmpl["min_amt"], tmpl["max_amt"]) * variation
         
-        # Arrondir à 2 décimales, négatif sauf salaire
         is_income = "INCOME" in tmpl["label_template"].upper()
         final_amount = round(raw_amount, 2)
         if not is_income:
@@ -121,11 +126,7 @@ def analyze_manual():
 # --- SIMULATEUR BANCAIRE SALT EDGE (MODE DEMO AVANCÉ & DYNAMIQUE) ---
 @app.route('/salt-edge/connect', methods=['POST'])
 def connect_salt_edge_simulated():
-    print(f"DEBUG INFO: Initiating Dynamic Salt Edge Simulation Mode...")
-    
-    # Génère des transactions différentes à CHAQUE appel !
     simulated_transactions = generate_random_bank_transactions(count=8)
-    
     analysis_result = perform_analysis(simulated_transactions)
     
     response_payload = {
@@ -138,6 +139,41 @@ def connect_salt_edge_simulated():
     }
     
     return jsonify(response_payload)
+
+# --- INTÉGRATION STRIPE CHECKOUT (PAIEMENT RÉEL) ---
+@app.route('/create-checkout-session', methods=['POST'])
+def create_checkout_session():
+    """Crée une session de paiement Stripe pour l'utilisateur."""
+    try:
+        # Récupère l'email ou ID user si besoin
+        data = request.get_json()
+        customer_email = data.get('email', 'client@example.com')
+        
+        # Création de la Session Checkout
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'eur',
+                    'product_data': {
+                        'name': 'Audit Financier Sentinel - Rapport Complet',
+                        'description': 'Analyse IA de vos abonnements cachés + Plan d\'action personnalisé.',
+                    },
+                    'unit_amount': 900, # Prix en centimes -> 9.00 €
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=f"https://sentinel-flask-v2-2.onrender.com/?status=paid&session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url="https://sentinel-flask-v2-2.onrender.com/",
+            metadata={'customer_email': customer_email} 
+        )
+        
+        return jsonify({"url": session.url})
+
+    except Exception as e:
+        print(f"Stripe Error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/salt-edge/callback', methods=['GET'])
 def salt_edge_callback():
