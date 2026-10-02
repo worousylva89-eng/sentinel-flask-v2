@@ -55,6 +55,20 @@
             margin-top: 15px;
         }
         .pay-now-btn:hover { background-color: #534bd3; transform: scale(1.02); }
+        
+        /* Indicateur de chargement subtil */
+        .spinner-small {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -113,12 +127,12 @@
         <h4>Détails des fuites :</h4>
         <div id="itemsList"></div>
 
-        <!-- ZONE DU BOUTON PAIEMENT (Injectée dynamiquement par JS) -->
+        <!-- ZONE DU BOUTON PAIEMENT -->
         <div id="paymentZone" style="display:none; text-align:center; margin-top:20px;">
              <hr style="border-top: 1px dashed #ccc; margin-bottom: 20px;">
              <h4 style="color:#e74c3c;">💎 Débloquez votre plan d'action complet</h4>
              <p style="font-size:14px; color:#666;">Recevez un guide PDF détaillé étape par étape pour résilier chaque abonnement détecté.</p>
-             <button onclick="processPayment()" class="pay-now-btn">
+             <button onclick="processPayment()" class="pay-now-btn" id="payBtn">
                  PAYER 9€ POUR L'AUDIT COMPLET
              </button>
              <p style="font-size:11px; color:#999; margin-top:10px;">Paiement sécurisé via Stripe. Garantie satisfait ou remboursé 7 jours.</p>
@@ -129,6 +143,30 @@
 </div>
 
 <script>
+    // --- FONCTION UTILITAIRE : RÉVEILLER LE SERVEUR RENDER ---
+    async function wakeUpServer() {
+        console.log("Attempting to wake up server...");
+        try {
+            // On fait un ping léger sur l'API principale
+            const response = await fetch('/salt-edge/connect', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: 'wake_up_check@sentinel.com' }),
+                signal: AbortSignal.timeout(10000) // Timeout court pour le test
+            });
+            
+            if (response.ok) {
+                console.log("Server is awake!");
+                return true;
+            } else {
+                throw new Error("Server responded with error status");
+            }
+        } catch (error) {
+            console.warn("Wake-up attempt failed or timed out:", error.message);
+            return false;
+        }
+    }
+
     // --- LOGIQUE SALT EDGE (SIMULATION LOCALE) ---
     async function startSaltEdge() {
         const btn = document.getElementById('connectBankBtn');
@@ -144,7 +182,10 @@
         statusDiv.style.color = "#16a34a";
         scanEffect.style.display = "block";
         resultDiv.style.display = "none";
-        paymentZone.style.display = "none"; // Cache le bouton pendant le chargement
+        paymentZone.style.display = "none";
+
+        // ÉTAPE CRUCIALE : Réveiller le serveur AVANT de demander les données
+        await wakeUpServer(); 
 
         try {
             const response = await fetch('/salt-edge/connect', {
@@ -162,8 +203,6 @@
                 
                 setTimeout(() => {
                     renderResults(data.data);
-                    
-                    // AFFICHAGE FORCÉ DU BOUTON DE PAIEMENT
                     paymentZone.style.display = "block";
                     
                     scanEffect.style.display = "none";
@@ -188,12 +227,39 @@
         }
     }
 
-    // --- LOGIQUE DE PAIEMENT STRIPE ---
+    // --- LOGIQUE DE PAIEMENT STRIPE (AVEC GESTION DU SOMMEIL) ---
     async function processPayment() {
-        const btn = event.target; // Récupère le bouton cliqué
+        const btn = document.getElementById('payBtn');
+        const originalText = btn.innerText;
+        
         btn.disabled = true;
-        btn.innerText = "Redirection vers Stripe...";
+        btn.innerHTML = '<span class="spinner-small"></span>Réveil du serveur...';
 
+        // 1. Essayer de réveiller le serveur si nécessaire
+        // (On suppose qu'il est déjà éveillé si on vient de charger la page, 
+        // mais si ça fait longtemps qu'on attend, on retente doucement)
+        let attempts = 0;
+        const maxAttempts = 3;
+        let success = false;
+
+        while(attempts < maxAttempts && !success) {
+            success = await wakeUpServer();
+            if(!success) {
+                attempts++;
+                await new Promise(r => setTimeout(r, 2000)); // Attendre 2s entre les essais
+            }
+        }
+
+        if(!success) {
+             alert("Le serveur semble hors ligne. Veuillez actualiser la page.");
+             btn.disabled = false;
+             btn.innerText = originalText;
+             return;
+        }
+
+        btn.innerHTML = '<span class="spinner-small"></span>Création du lien de paiement...';
+
+        // 2. Créer la session Stripe maintenant que le serveur est chaud
         try {
             const response = await fetch('/create-checkout-session', {
                 method: 'POST',
@@ -215,7 +281,7 @@
             console.error(error);
             alert("Impossible de lancer le paiement : " + error.message);
             btn.disabled = false;
-            btn.innerText = "RÉESSAYER LE PAIEMENT";
+            btn.innerText = originalText;
         }
     }
 
@@ -232,10 +298,13 @@
         const paymentZone = document.getElementById('paymentZone');
 
         btn.disabled = true;
-        btn.innerText = "Analyse en cours...";
+        btn.innerText = "Réveil serveur & Analyse...";
         loader.style.display = "block";
         resultDiv.style.display = "none";
         paymentZone.style.display = "none";
+
+        // Réveiller aussi pour l'analyse manuelle
+        await wakeUpServer();
 
         try {
             let lines = inputText.split('\n');
@@ -269,8 +338,6 @@
 
             const data = await response.json();
             renderResults(data.data);
-            
-            // Affiche aussi le bouton pour l'analyse manuelle
             paymentZone.style.display = "block";
 
         } catch (error) {
