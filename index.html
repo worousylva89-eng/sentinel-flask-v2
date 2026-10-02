@@ -69,11 +69,51 @@
             vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* NOUVEAU STYLES POUR LE SUCCÈS POST-PAIEMENT */
+        #successBanner {
+            display: none;
+            background: #dcfce7;
+            border: 2px solid #22c55e;
+            color: #166534;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 25px;
+            animation: slideDown 0.5s ease-out;
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .download-btn {
+            background-color: #16a34a;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .download-btn:hover { background-color: #15803d; }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <!-- BANNIÈRE DE SUCCÈS (Apparaît seulement si ?status=paid) -->
+    <div id="successBanner">
+        <h2 style="margin:0 0 10px 0;">✅ Paiement Confirmé !</h2>
+        <p>Merci pour votre confiance. Votre audit financier complet est prêt.</p>
+        <button onclick="simulateDownload()" class="download-btn">
+            📥 TÉLÉCHARGER MON RAPPORT PDF COMPLET
+        </button>
+        <p style="font-size:12px; margin-top:10px; color:#166534;">Un lien de téléchargement a également été envoyé par email.</p>
+    </div>
+
     <h1>🛡️ Agent Sentinel</h1>
     <p class="subtitle">Détectez vos abonnements cachés et récupérez votre pouvoir d'achat.</p>
 
@@ -143,26 +183,49 @@
 </div>
 
 <script>
+    // --- DÉTECTION AUTOMATIQUE DU STATUT PAIEMENT AU CHARGEMENT ---
+    window.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const status = urlParams.get('status');
+        
+        if (status === 'paid') {
+            // Afficher la bannière de succès
+            document.getElementById('successBanner').style.display = 'block';
+            
+            // Optionnel : Masquer les sections d'analyse initiales pour focaliser sur le résultat
+            // document.getElementById('bankSection').style.display = 'none';
+            // document.querySelector('.divider').style.display = 'none';
+            // document.querySelector('label[for="csvInput"]').parentElement.style.display = 'none';
+            
+            console.log("Payment successful detected. Showing banner.");
+        }
+    });
+
+    // --- FONCTION SIMULÉE DE TÉLÉCHARGEMENT ---
+    function simulateDownload() {
+        alert("📄 Génération de votre rapport personnalisé...\n\n(Dans une version finale, ceci déclencherait le téléchargement réel du fichier PDF généré côté serveur.)");
+        
+        // Simulation visuelle d'un téléchargement
+        const link = document.createElement('a');
+        link.href = '#';
+        link.download = 'Rapport_Sentinel_Complet.pdf';
+        link.click();
+    }
+
     // --- FONCTION UTILITAIRE : RÉVEILLER LE SERVEUR RENDER ---
     async function wakeUpServer() {
         console.log("Attempting to wake up server...");
         try {
-            // On fait un ping léger sur l'API principale
             const response = await fetch('/salt-edge/connect', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: 'wake_up_check@sentinel.com' }),
-                signal: AbortSignal.timeout(10000) // Timeout court pour le test
+                signal: AbortSignal.timeout(10000)
             });
             
-            if (response.ok) {
-                console.log("Server is awake!");
-                return true;
-            } else {
-                throw new Error("Server responded with error status");
-            }
+            if (response.ok) return true;
+            else throw new Error("Error");
         } catch (error) {
-            console.warn("Wake-up attempt failed or timed out:", error.message);
             return false;
         }
     }
@@ -184,7 +247,6 @@
         resultDiv.style.display = "none";
         paymentZone.style.display = "none";
 
-        // ÉTAPE CRUCIALE : Réveiller le serveur AVANT de demander les données
         await wakeUpServer(); 
 
         try {
@@ -214,7 +276,7 @@
                 }, 1500);
                 
             } else {
-                throw new Error("Structure de réponse invalide");
+                throw new Error("Structure invalide");
             }
 
         } catch (error) {
@@ -222,44 +284,39 @@
             statusDiv.innerHTML = "❌ Erreur technique.";
             statusDiv.style.color = "#dc2626";
             btn.disabled = false;
-            btn.innerHTML = "<span>🏦 RÉESSAYER LA CONNEXION</span>";
+            btn.innerHTML = "<span>🏦 RÉESSAYER</span>";
             scanEffect.style.display = "none";
         }
     }
 
-    // --- LOGIQUE DE PAIEMENT STRIPE (AVEC GESTION DU SOMMEIL) ---
+    // --- LOGIQUE DE PAIEMENT STRIPE ---
     async function processPayment() {
         const btn = document.getElementById('payBtn');
         const originalText = btn.innerText;
         
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-small"></span>Réveil du serveur...';
+        btn.innerHTML = '<span class="spinner-small"></span>Réveil...';
 
-        // 1. Essayer de réveiller le serveur si nécessaire
-        // (On suppose qu'il est déjà éveillé si on vient de charger la page, 
-        // mais si ça fait longtemps qu'on attend, on retente doucement)
         let attempts = 0;
-        const maxAttempts = 3;
         let success = false;
 
-        while(attempts < maxAttempts && !success) {
+        while(attempts < 3 && !success) {
             success = await wakeUpServer();
             if(!success) {
                 attempts++;
-                await new Promise(r => setTimeout(r, 2000)); // Attendre 2s entre les essais
+                await new Promise(r => setTimeout(r, 2000));
             }
         }
 
         if(!success) {
-             alert("Le serveur semble hors ligne. Veuillez actualiser la page.");
+             alert("Serveur hors ligne.");
              btn.disabled = false;
              btn.innerText = originalText;
              return;
         }
 
-        btn.innerHTML = '<span class="spinner-small"></span>Création du lien de paiement...';
+        btn.innerHTML = '<span class="spinner-small"></span>Stripe...';
 
-        // 2. Créer la session Stripe maintenant que le serveur est chaud
         try {
             const response = await fetch('/create-checkout-session', {
                 method: 'POST',
@@ -267,25 +324,25 @@
                 body: JSON.stringify({ email: "client@" + Date.now() + ".com" }) 
             });
 
-            if (!response.ok) throw new Error("Erreur création session");
+            if (!response.ok) throw new Error("Erreur session");
             
             const data = await response.json();
             
             if(data.url) {
-                window.location.href = data.url; // REDIRECTION VERS STRIPE
+                window.location.href = data.url; 
             } else {
                 throw new Error("URL manquante");
             }
 
         } catch (error) {
             console.error(error);
-            alert("Impossible de lancer le paiement : " + error.message);
+            alert("Erreur paiement : " + error.message);
             btn.disabled = false;
             btn.innerText = originalText;
         }
     }
 
-    // --- LOGIQUE ANALYSE MANUELLE (EXISTANT) ---
+    // --- LOGIQUE ANALYSE MANUELLE ---
     const API_URL = "/analyze"; 
 
     async function sendToAI() {
@@ -298,12 +355,11 @@
         const paymentZone = document.getElementById('paymentZone');
 
         btn.disabled = true;
-        btn.innerText = "Réveil serveur & Analyse...";
+        btn.innerText = "Analyse...";
         loader.style.display = "block";
         resultDiv.style.display = "none";
         paymentZone.style.display = "none";
 
-        // Réveiller aussi pour l'analyse manuelle
         await wakeUpServer();
 
         try {
@@ -321,12 +377,9 @@
                 }
             });
 
-            if(transactions.length === 0) throw new Error("Aucune transaction valide trouvée.");
+            if(transactions.length === 0) throw new Error("Aucune transaction valide.");
 
-            const payload = {
-                user_id: "WEB_USER_" + Math.floor(Math.random()*1000),
-                transactions: transactions
-            };
+            const payload = { user_id: "WEB_USER_" + Math.floor(Math.random()*1000), transactions: transactions };
 
             const response = await fetch(API_URL, {
                 method: 'POST',
@@ -334,7 +387,7 @@
                 body: JSON.stringify(payload)
             });
 
-            if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
+            if (!response.ok) throw new Error(`Erreur: ${response.status}`);
 
             const data = await response.json();
             renderResults(data.data);
