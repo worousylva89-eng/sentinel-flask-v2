@@ -108,7 +108,7 @@
     <div id="successBanner">
         <h2 style="margin:0 0 10px 0;">✅ Paiement Confirmé !</h2>
         <p>Merci pour votre confiance. Votre audit financier complet est prêt.</p>
-        <button onclick="simulateDownload()" class="download-btn">
+        <button onclick="triggerRealDownload()" class="download-btn">
             📥 TÉLÉCHARGER MON RAPPORT PDF COMPLET
         </button>
         <p style="font-size:12px; margin-top:10px; color:#166534;">Un lien de téléchargement a également été envoyé par email.</p>
@@ -187,29 +187,26 @@
     window.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const status = urlParams.get('status');
+        const uid = urlParams.get('uid'); // Récupère l'UID passé par Stripe
         
         if (status === 'paid') {
-            // Afficher la bannière de succès
             document.getElementById('successBanner').style.display = 'block';
             
-            // Optionnel : Masquer les sections d'analyse initiales pour focaliser sur le résultat
-            // document.getElementById('bankSection').style.display = 'none';
-            // document.querySelector('.divider').style.display = 'none';
-            // document.querySelector('label[for="csvInput"]').parentElement.style.display = 'none';
-            
-            console.log("Payment successful detected. Showing banner.");
+            // Stocke l'UID globalement pour que le bouton puisse l'utiliser
+            window.currentPaidUid = uid || sessionStorage.getItem('sentinel_last_uid');
         }
     });
 
-    // --- FONCTION SIMULÉE DE TÉLÉCHARGEMENT ---
-    function simulateDownload() {
-        alert("📄 Génération de votre rapport personnalisé...\n\n(Dans une version finale, ceci déclencherait le téléchargement réel du fichier PDF généré côté serveur.)");
+    // --- FONCTION DE TÉLÉCHARGEMENT RÉEL ---
+    function triggerRealDownload() {
+        const uid = window.currentPaidUid;
+        if (!uid) {
+            alert("Erreur : Identifiant de session manquant. Veuillez recommencer l'analyse.");
+            return;
+        }
         
-        // Simulation visuelle d'un téléchargement
-        const link = document.createElement('a');
-        link.href = '#';
-        link.download = 'Rapport_Sentinel_Complet.pdf';
-        link.click();
+        // Ouvre le lien direct vers la route Flask qui génère le PDF
+        window.open(`/generate-report-pdf/${uid}`, '_blank');
     }
 
     // --- FONCTION UTILITAIRE : RÉVEILLER LE SERVEUR RENDER ---
@@ -262,6 +259,11 @@
             
             if(data.status === 'success' && data.data) {
                 statusDiv.innerText = "✅ Accès accordé. Analyse en cours...";
+                
+                // CRUCIAL : Sauvegarder l'ID temporaire reçu du backend
+                if(data.temp_user_id) {
+                    sessionStorage.setItem('sentinel_last_uid', data.temp_user_id);
+                }
                 
                 setTimeout(() => {
                     renderResults(data.data);
@@ -318,10 +320,16 @@
         btn.innerHTML = '<span class="spinner-small"></span>Stripe...';
 
         try {
+            // Récupère l'UID sauvegardé plus tôt
+            const currentUid = sessionStorage.getItem('sentinel_last_uid') || "fallback_" + Date.now();
+
             const response = await fetch('/create-checkout-session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: "client@" + Date.now() + ".com" }) 
+                body: JSON.stringify({ 
+                    email: "client@" + Date.now() + ".com",
+                    temp_user_id: currentUid // Envoie l'UID au backend
+                }) 
             });
 
             if (!response.ok) throw new Error("Erreur session");
@@ -390,6 +398,12 @@
             if (!response.ok) throw new Error(`Erreur: ${response.status}`);
 
             const data = await response.json();
+            
+            // Sauvegarde aussi l'ID pour l'analyse manuelle
+            if(data.temp_user_id) {
+                sessionStorage.setItem('sentinel_last_uid', data.temp_user_id);
+            }
+
             renderResults(data.data);
             paymentZone.style.display = "block";
 
