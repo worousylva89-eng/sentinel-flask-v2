@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agent Sentinel - Analyse Financière IA</title>
+    <!-- AJOUT CRUCIAL : LIBRAIRIE JS-PDF POUR GÉNÉRER LE DOCUMENT ICI -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
@@ -104,11 +107,11 @@
 <body>
 
 <div class="container">
-    <!-- BANNIÈRE DE SUCCÈS (Apparaît seulement si ?status=paid) -->
+    <!-- BANNIÈRE DE SUCCÈS -->
     <div id="successBanner">
         <h2 style="margin:0 0 10px 0;">✅ Paiement Confirmé !</h2>
         <p>Merci pour votre confiance. Votre audit financier complet est prêt.</p>
-        <button onclick="triggerRealDownload()" class="download-btn">
+        <button onclick="generateAndDownloadPdf()" class="download-btn">
             📥 TÉLÉCHARGER MON RAPPORT PDF COMPLET
         </button>
         <p style="font-size:12px; margin-top:10px; color:#166534;">Un lien de téléchargement a également été envoyé par email.</p>
@@ -117,7 +120,7 @@
     <h1>🛡️ Agent Sentinel</h1>
     <p class="subtitle">Détectez vos abonnements cachés et récupérez votre pouvoir d'achat.</p>
 
-    <!-- SECTION 1 : CONNEXION BANCAIRE DIRECTE (SIMULATION) -->
+    <!-- SECTION 1 : CONNEXION BANCAIRE DIRECTE -->
     <div class="bank-section" id="bankSection">
         <div class="scan-overlay" style="display:none;" id="scanEffect"></div>
         <h3 style="margin-top:0; color:#166534;">🔒 Connexion Sécurisée Open Banking</h3>
@@ -197,16 +200,114 @@
         }
     });
 
-    // --- FONCTION DE TÉLÉCHARGEMENT RÉEL ---
-    function triggerRealDownload() {
+    // --- FONCTION DE GÉNÉRATION PDF CÔTÉ CLIENT (RAPIDE & SANS TIMEOUT) ---
+    async function generateAndDownloadPdf() {
         const uid = window.currentPaidUid;
         if (!uid) {
-            alert("Erreur : Identifiant de session manquant. Veuillez recommencer l'analyse.");
+            alert("Erreur : Identifiant manquant.");
             return;
         }
-        
-        // Ouvre le lien direct vers la route Flask qui génère le PDF
-        window.open(`/generate-report-pdf/${uid}`, '_blank');
+
+        try {
+            // 1. Récupère les données brutes depuis notre nouvelle route rapide /get-report-data
+            const response = await fetch(`/get-report-data/${uid}`);
+            if (!response.ok) throw new Error("Données indisponibles");
+            
+            const result = await response.json();
+            const reportData = result.data;
+
+            // 2. Utilise jsPDF pour créer le document localement dans le navigateur
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // En-tête Vert
+            doc.setFillColor(22, 163, 74);
+            doc.rect(0, 0, 210, 30, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(20);
+            doc.text("AGENT SENTINEL", 105, 15, null, null, "center");
+            doc.setFontSize(12);
+            doc.text("Rapport Audit Financier Personnalisé", 105, 22, null, null, "center");
+
+            // Date
+            doc.setTextColor(50, 50, 50);
+            doc.setFontSize(10);
+            doc.text(`Date generation : ${new Date().toLocaleDateString('fr-FR')}`, 15, 40);
+
+            // Synthèse Globale
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text("Synthese Globale", 15, 50);
+            doc.line(15, 52, 195, 52);
+            
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'normal');
+            let yPos = 60;
+            const summary = reportData.analysis_summary;
+            
+            doc.text(`Transactions scannees : ${summary.total_scanned_lines}`, 15, yPos); yPos += 8;
+            doc.text(`Abonnements detectes : ${summary.subscriptions_detected}`, 15, yPos); yPos += 8;
+            doc.text(`Perte mensuelle estimee : ${summary.monthly_loss_identified} EUR`, 15, yPos); yPos += 8;
+            doc.text(`Projection annuelle : ${summary.yearly_loss_projected} EUR`, 15, yPos); yPos += 15;
+
+            // Box Verte Gain
+            doc.setFillColor(232, 248, 245);
+            doc.rect(15, yPos, 180, 15, 'F');
+            doc.setTextColor(39, 174, 96);
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text(`POTENTIEL NET MENSUEL : +${reportData.financial_action.client_savings_net_monthly} EUR`, 105, yPos + 10, null, null, "center");
+            doc.setTextColor(50, 50, 50);
+            yPos += 25;
+
+            // Détails Table
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text("Detail des Abonnements Detectes", 15, yPos);
+            doc.line(15, yPos+2, 195, yPos+2);
+            yPos += 10;
+
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'bold');
+            doc.setFillColor(240, 240, 240);
+            doc.rect(15, yPos, 60, 8, 'F'); doc.text("Categorie", 17, yPos+6);
+            doc.rect(75, yPos, 60, 8, 'F'); doc.text("Montant / Mois", 77, yPos+6);
+            doc.rect(135, yPos, 60, 8, 'F'); doc.text("Reference Anonyme", 137, yPos+6);
+            yPos += 8;
+
+            doc.setFont(undefined, 'normal');
+            const items = reportData.detected_items_anonymized;
+            
+            if(items.length === 0) {
+                doc.text("Aucun abonnement suspect detecte.", 15, yPos+6);
+            } else {
+                items.forEach(item => {
+                    const catReadable = item.category_code.replace('_', ' ').toUpperCase();
+                    doc.text(catReadable.substring(0, 25), 17, yPos+6);
+                    doc.text(`${item.amount_monthly.toFixed(2)} EUR`, 77, yPos+6);
+                    doc.text(`#${item.ref_hash}`, 137, yPos+6);
+                    yPos += 8;
+                    
+                    // Gestion saut de page si nécessaire
+                    if(yPos > 270) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                });
+            }
+
+            // Pied de page
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text("Ce rapport est confidentiel et genere automatiquement par Agent Sentinel.", 105, 290, null, null, "center");
+
+            // Téléchargement final
+            doc.save(`Sentinel_Audit_${uid}.pdf`);
+
+        } catch (error) {
+            console.error(error);
+            alert("Impossible de générer le rapport : " + error.message);
+        }
     }
 
     // --- FONCTION UTILITAIRE : RÉVEILLER LE SERVEUR RENDER ---
@@ -320,7 +421,6 @@
         btn.innerHTML = '<span class="spinner-small"></span>Stripe...';
 
         try {
-            // Récupère l'UID sauvegardé plus tôt
             const currentUid = sessionStorage.getItem('sentinel_last_uid') || "fallback_" + Date.now();
 
             const response = await fetch('/create-checkout-session', {
@@ -328,7 +428,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     email: "client@" + Date.now() + ".com",
-                    temp_user_id: currentUid // Envoie l'UID au backend
+                    temp_user_id: currentUid 
                 }) 
             });
 
@@ -399,7 +499,6 @@
 
             const data = await response.json();
             
-            // Sauvegarde aussi l'ID pour l'analyse manuelle
             if(data.temp_user_id) {
                 sessionStorage.setItem('sentinel_last_uid', data.temp_user_id);
             }
