@@ -188,7 +188,7 @@ def create_checkout_session():
         print(f"Stripe Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# --- GÉNÉRATION DU RAPPORT PDF (VERSION ROBUSTE) ---
+# --- GÉNÉRATION DU RAPPORT PDF (VERSION FINALE & ROBUSTE) ---
 @app.route('/generate-report-pdf/<uid>', methods=['GET'])
 def generate_report_pdf(uid):
     """Génère et retourne le PDF basé sur l'analyse stockée sous cet UID."""
@@ -294,17 +294,21 @@ def generate_report_pdf(uid):
         pdf.set_text_color(150, 150, 150)
         pdf.cell(0, 10, 'Ce rapport est confidentiel et genere automatiquement par Agent Sentinel.', align='C')
         
-        # Sortie du PDF (Méthode robuste)
-        output_bytes = pdf.output(dest='S').encode('latin-1')
+        # CORRECTION CRUCIALE POUR FPDF2 V2.X+
+        # On récupère directement le buffer binaire sans encodage manuel
+        pdf_output = pdf.output()
         
         filename = f"Sentinel_Audit_{uid}.pdf"
         headers = {'Content-Disposition': f'attachment; filename="{filename}"'}
         
-        return Response(output_bytes, mimetype='application/pdf', headers=headers)
+        # Flask accepte nativement les bytes/bytearray pour mimetype application/pdf
+        return Response(pdf_output, mimetype='application/pdf', headers=headers)
 
     except Exception as e:
         print(f"PDF Generation Error: {str(e)}")
-        return f"<h1>Erreur Technique</h1><p>{str(e)}</p>", 500
+        import traceback
+        traceback.print_exc() # Pour voir l'erreur complète dans les logs Render si besoin
+        return f"<h1>Erreur Technique</h1><pre>{traceback.format_exc()}</pre>", 500
 
 @app.route('/salt-edge/callback', methods=['GET'])
 def salt_edge_callback():
