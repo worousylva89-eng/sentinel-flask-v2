@@ -39,6 +39,22 @@
             animation: scanMove 2s infinite; z-index: 1; pointer-events: none;
         }
         @keyframes scanMove { 0% { left: -100%; } 100% { left: 100%; } }
+        
+        /* Style spécifique pour le bouton de paiement */
+        .pay-now-btn {
+            background-color: #635bff; /* Violet Stripe */
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 15px;
+        }
+        .pay-now-btn:hover { background-color: #534bd3; transform: scale(1.02); }
     </style>
 </head>
 <body>
@@ -97,31 +113,40 @@
         <h4>Détails des fuites :</h4>
         <div id="itemsList"></div>
 
+        <!-- ZONE DU BOUTON PAIEMENT (Injectée dynamiquement par JS) -->
+        <div id="paymentZone" style="display:none; text-align:center; margin-top:20px;">
+             <hr style="border-top: 1px dashed #ccc; margin-bottom: 20px;">
+             <h4 style="color:#e74c3c;">💎 Débloquez votre plan d'action complet</h4>
+             <p style="font-size:14px; color:#666;">Recevez un guide PDF détaillé étape par étape pour résilier chaque abonnement détecté.</p>
+             <button onclick="processPayment()" class="pay-now-btn">
+                 PAYER 9€ POUR L'AUDIT COMPLET
+             </button>
+             <p style="font-size:11px; color:#999; margin-top:10px;">Paiement sécurisé via Stripe. Garantie satisfait ou remboursé 7 jours.</p>
+        </div>
+
         <p style="font-size:12px; color:#aaa; text-align:center; margin-top:20px;">Signature cryptographique vérifiée ✅</p>
     </div>
 </div>
 
 <script>
-    // --- LOGIQUE SALT EDGE (VERSION SIMULATION LOCALE) ---
+    // --- LOGIQUE SALT EDGE (SIMULATION LOCALE) ---
     async function startSaltEdge() {
         const btn = document.getElementById('connectBankBtn');
         const statusDiv = document.getElementById('bankStatus');
         const scanEffect = document.getElementById('scanEffect');
         const resultDiv = document.getElementById('result');
+        const paymentZone = document.getElementById('paymentZone');
         
-        // UI Feedback Visuel
         btn.disabled = true;
         btn.innerHTML = "⏳ Authentification sécurisée...";
         statusDiv.style.display = "block";
         statusDiv.innerText = "Connexion au flux bancaire chiffré...";
-        statusDiv.style.color = "#16a34a"; // Vert pendant le process
-        scanEffect.style.display = "block"; // Active l'animation de balayage
-        
-        // Masquer les anciens résultats si présents
+        statusDiv.style.color = "#16a34a";
+        scanEffect.style.display = "block";
         resultDiv.style.display = "none";
+        paymentZone.style.display = "none"; // Cache le bouton pendant le chargement
 
         try {
-            // Appel à notre route Flask /salt-edge/connect (qui renvoie maintenant les DATA directement)
             const response = await fetch('/salt-edge/connect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -132,21 +157,19 @@
             
             const data = await response.json();
             
-            // Vérifie si on a bien reçu des données d'analyse
             if(data.status === 'success' && data.data) {
                 statusDiv.innerText = "✅ Accès accordé. Analyse en cours...";
                 
-                // Petit délai dramatique avant d'afficher le rapport
                 setTimeout(() => {
-                    renderResults(data.data); // Affiche le tableau de bord
+                    renderResults(data.data);
                     
-                    // Nettoyage UI
+                    // AFFICHAGE FORCÉ DU BOUTON DE PAIEMENT
+                    paymentZone.style.display = "block";
+                    
                     scanEffect.style.display = "none";
                     btn.disabled = false;
                     btn.innerHTML = "<span>🔄 RECHARGER UNE AUTRE BANQUE</span>";
                     statusDiv.style.display = "none";
-                    
-                    // Scroll fluide vers le résultat
                     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                     
                 }, 1500);
@@ -157,11 +180,42 @@
 
         } catch (error) {
             console.error(error);
-            statusDiv.innerHTML = "❌ Erreur technique : Impossible d'établir la liaison.";
+            statusDiv.innerHTML = "❌ Erreur technique.";
             statusDiv.style.color = "#dc2626";
             btn.disabled = false;
             btn.innerHTML = "<span>🏦 RÉESSAYER LA CONNEXION</span>";
             scanEffect.style.display = "none";
+        }
+    }
+
+    // --- LOGIQUE DE PAIEMENT STRIPE ---
+    async function processPayment() {
+        const btn = event.target; // Récupère le bouton cliqué
+        btn.disabled = true;
+        btn.innerText = "Redirection vers Stripe...";
+
+        try {
+            const response = await fetch('/create-checkout-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: "client@" + Date.now() + ".com" }) 
+            });
+
+            if (!response.ok) throw new Error("Erreur création session");
+            
+            const data = await response.json();
+            
+            if(data.url) {
+                window.location.href = data.url; // REDIRECTION VERS STRIPE
+            } else {
+                throw new Error("URL manquante");
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("Impossible de lancer le paiement : " + error.message);
+            btn.disabled = false;
+            btn.innerText = "RÉESSAYER LE PAIEMENT";
         }
     }
 
@@ -175,11 +229,13 @@
         const btn = document.getElementById('analyzeBtn');
         const loader = document.getElementById('loader');
         const resultDiv = document.getElementById('result');
+        const paymentZone = document.getElementById('paymentZone');
 
         btn.disabled = true;
         btn.innerText = "Analyse en cours...";
         loader.style.display = "block";
         resultDiv.style.display = "none";
+        paymentZone.style.display = "none";
 
         try {
             let lines = inputText.split('\n');
@@ -213,10 +269,13 @@
 
             const data = await response.json();
             renderResults(data.data);
+            
+            // Affiche aussi le bouton pour l'analyse manuelle
+            paymentZone.style.display = "block";
 
         } catch (error) {
             console.error(error);
-            alert("Impossible de contacter le serveur. Vérifiez votre connexion ou attendez que le serveur se réveille (peut prendre 50s).");
+            alert("Impossible de contacter le serveur.");
         } finally {
             btn.disabled = false;
             btn.innerText = "⚡ ANALYSER MES COMPTES";
