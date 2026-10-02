@@ -1,12 +1,17 @@
 import os
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, send_file, abort
+from flask import Flask, request, jsonify, send_from_directory, Response
 import requests
 import json
 import random
 from datetime import datetime, timedelta
 import stripe
-from fpdf import FPDF # Importation de la librairie PDF
+# Importation sécurisée de FPDF
+try:
+    from fpdf import FPDF
+except ImportError:
+    print("CRITICAL WARNING: fpdf2 not installed! Check requirements.txt")
+    FPDF = None 
 
 # --- CONFIGURATION ENVIRONNEMENT ---
 load_dotenv()
@@ -21,8 +26,7 @@ app = Flask(__name__, static_folder='.')
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
-# --- STOCKAGE TEMPORAIRE DES ANALYSES (SIMULATION BASE DE DONNÉES) ---
-# Clé = Email User, Valeur = Résultat Analyse
+# --- STOCKAGE TEMPORAIRE DES ANALYSES ---
 last_analyses_store = {} 
 
 @app.route('/')
@@ -119,7 +123,6 @@ def analyze_manual():
     transactions = data.get('transactions', [])
     result_data = perform_analysis(transactions)
     
-    # Sauvegarde temporaire pour le PDF
     user_id = data.get('user_id', 'guest_' + str(random.randint(1000,9999)))
     last_analyses_store[user_id] = result_data
     
@@ -128,16 +131,15 @@ def analyze_manual():
         "message": "Analyse terminée.",
         "data": result_data,
         "signature": "SECURE_HASH_V2_UNIFIED",
-        "temp_user_id": user_id # On renvoie l'ID pour pouvoir récupérer le PDF après
+        "temp_user_id": user_id 
     })
 
-# --- SIMULATEUR BANCAIRE SALT EDGE (MODE DEMO AVANCÉ & DYNAMIQUE) ---
+# --- SIMULATEUR BANCAIRE SALT EDGE ---
 @app.route('/salt-edge/connect', methods=['POST'])
 def connect_salt_edge_simulated():
     simulated_transactions = generate_random_bank_transactions(count=8)
     analysis_result = perform_analysis(simulated_transactions)
     
-    # Génération d'un ID unique pour lier l'analyse au futur paiement
     temp_id = "sim_" + str(random.randint(100000, 999999))
     last_analyses_store[temp_id] = analysis_result
     
@@ -148,21 +150,19 @@ def connect_salt_edge_simulated():
         "data": analysis_result,
         "raw_transactions_count": len(simulated_transactions),
         "security_note": "Demo Mode Active - No real banking data accessed.",
-        "temp_user_id": temp_id # Important pour le lien PDF
+        "temp_user_id": temp_id 
     }
     
     return jsonify(response_payload)
 
-# --- INTÉGRATION STRIPE CHECKOUT (PAIEMENT RÉEL) ---
+# --- INTÉGRATION STRIPE CHECKOUT ---
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
-    """Crée une session de paiement Stripe pour l'utilisateur."""
     try:
         data = request.get_json()
         customer_email = data.get('email', 'client@example.com')
-        temp_user_id = data.get('temp_user_id', 'unknown') # Récupère l'ID envoyé par le front
+        temp_user_id = data.get('temp_user_id', 'unknown') 
         
-        # Création de la Session Checkout
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
@@ -172,12 +172,12 @@ def create_checkout_session():
                         'name': 'Audit Financier Sentinel - Rapport Complet',
                         'description': 'Analyse IA de vos abonnements cachés + Plan d\'action personnalisé.',
                     },
-                    'unit_amount': 900, # Prix en centimes -> 9.00 €
+                    'unit_amount': 900, 
                 },
                 'quantity': 1,
             }],
             mode='payment',
-            success_url=f"https://sentinel-flask-v2-2.onrender.com/?status=paid&uid={temp_user_id}", # Ajout de uid dans l'URL
+            success_url=f"https://sentinel-flask-v2-2.onrender.com/?status=paid&uid={temp_user_id}", 
             cancel_url="https://sentinel-flask-v2-2.onrender.com/",
             metadata={'customer_email': customer_email, 'internal_uid': temp_user_id} 
         )
@@ -188,120 +188,123 @@ def create_checkout_session():
         print(f"Stripe Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# --- GÉNÉRATION DU RAPPORT PDF (LA PIÈCE MAÎTRESSE) ---
+# --- GÉNÉRATION DU RAPPORT PDF (VERSION ROBUSTE) ---
 @app.route('/generate-report-pdf/<uid>', methods=['GET'])
 def generate_report_pdf(uid):
     """Génère et retourne le PDF basé sur l'analyse stockée sous cet UID."""
     
-    # 1. Récupérer les données depuis notre stockage mémoire
+    if not FPDF:
+         return "<h1>Erreur</h1><p>Librairie PDF manquante.</p>", 500
+
     analysis_data = last_analyses_store.get(uid)
     
     if not analysis_data:
         return "<h1>Erreur</h1><p>Rapport introuvable ou expiré.</p>", 404
 
-    # 2. Créer le PDF
-    pdf = FPDF(unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-    
-    # En-tête Coloré
-    pdf.set_fill_color(22, 163, 74) # Vert Sentinel
-    pdf.rect(0, 0, 210, 30, 'F')
-    pdf.set_y(10)
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font('helvetica', 'B', 20)
-    pdf.cell(0, 10, 'AGENT SENTINEL', ln=True, align='C')
-    pdf.set_font('helvetica', '', 12)
-    pdf.cell(0, 10, 'Rapport d\'Audit Financier Personnalisé', ln=True, align='C')
-    
-    # Corps du document
-    pdf.ln(10)
-    pdf.set_text_color(50, 50, 50)
-    pdf.set_x(15)
-    
-    # Date
-    today_str = datetime.now().strftime("%d/%m/%Y")
-    pdf.set_font('helvetica', 'I', 10)
-    pdf.cell(0, 10, f'Date de génération : {today_str}', ln=True)
-    pdf.ln(5)
-
-    # Résumé Statistique
-    summary = analysis_data['analysis_summary']
-    action = analysis_data['financial_action']
-    
-    pdf.set_font('helvetica', 'B', 14)
-    pdf.cell(0, 10, 'Synthèse Globale', ln=True)
-    pdf.line(15, pdf.get_y(), 195, pdf.get_y()) # Ligne horizontale
-    pdf.ln(2)
-    
-    pdf.set_font('helvetica', '', 12)
-    stats_labels = [
-        ("Transactions scannées :", summary['total_scanned_lines']),
-        ("Abonnements détectés :", summary['subscriptions_detected']),
-        ("Perte mensuelle estimée :", f"{summary['monthly_loss_identified']} €"),
-        ("Projection annuelle :", f"{summary['yearly_loss_projected']} €")
-    ]
-    
-    for label, value in stats_labels:
-        pdf.cell(100, 8, label, border=0)
-        pdf.set_font('helvetica', 'B', 12)
-        pdf.cell(0, 8, str(value), ln=True, align='R')
+    try:
+        pdf = FPDF(unit='mm', format='A4')
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        
+        # En-tête Coloré
+        pdf.set_fill_color(22, 163, 74) # Vert Sentinel
+        pdf.rect(0, 0, 210, 30, 'F')
+        pdf.set_y(10)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font('helvetica', 'B', 20)
+        pdf.cell(0, 10, 'AGENT SENTINEL', ln=True, align='C')
         pdf.set_font('helvetica', '', 12)
-    
-    pdf.ln(5)
-    
-    # Le Gain Potentiel (Box Verte)
-    pdf.set_fill_color(232, 248, 245) # Fond vert clair
-    pdf.rect(15, pdf.get_y(), 180, 20, 'F')
-    pdf.set_xy(15, pdf.get_y()+5)
-    pdf.set_font('helvetica', 'B', 14)
-    pdf.set_text_color(39, 174, 96) # Texte vert foncé
-    pdf.cell(180, 10, f"VOTRE POTENTIEL NET MENSUEL : +{action['client_savings_net_monthly']} €", align='C')
-    pdf.set_text_color(50, 50, 50) # Reset couleur texte
-    
-    pdf.ln(25)
-    
-    # Détails des fuites
-    pdf.set_font('helvetica', 'B', 14)
-    pdf.cell(0, 10, 'Détail des Abonnements Détectés', ln=True)
-    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
-    pdf.ln(2)
-    
-    # Table Header
-    pdf.set_font('helvetica', 'B', 10)
-    pdf.set_fill_color(240, 240, 240)
-    pdf.cell(60, 8, 'Catégorie', border=1, fill=True)
-    pdf.cell(60, 8, 'Montant / Mois', border=1, fill=True, align='C')
-    pdf.cell(60, 8, 'Référence Anonyme', border=1, fill=True, align='C')
-    pdf.ln()
-    
-    pdf.set_font('helvetica', '', 10)
-    items = analysis_data['detected_items_anonymized']
-    
-    if not items:
-        pdf.cell(180, 8, 'Aucun abonnement suspect détecté. Félicitations !', border=1)
-    else:
-        for item in items:
-            cat_readable = item['category_code'].replace('_', ' ').title()
-            pdf.cell(60, 8, cat_readable, border=1)
-            pdf.cell(60, 8, f"{item['amount_monthly']} €", border=1, align='C')
-            pdf.cell(60, 8, f"#{item['ref_hash']}", border=1, align='C')
-            pdf.ln()
-            
-    # Pied de page
-    pdf.y = 270
-    pdf.set_font('helvetica', 'I', 8)
-    pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 10, 'Ce rapport est confidentiel et généré automatiquement par Agent Sentinel.', align='C')
-    
-    # Sortie du PDF
-    filename = f"Sentinel_Audit_{uid}.pdf"
-    return send_file(
-        path_or_fp=__import__('io').BytesIO(pdf.output()),
-        mimetype='application/pdf',
-        as_attachment=True,
-        download_name=filename
-    )
+        pdf.cell(0, 10, 'Rapport Audit Financier', ln=True, align='C')
+        
+        # Corps du document
+        pdf.ln(10)
+        pdf.set_text_color(50, 50, 50)
+        pdf.set_x(15)
+        
+        today_str = datetime.now().strftime("%d/%m/%Y")
+        pdf.set_font('helvetica', 'I', 10)
+        pdf.cell(0, 10, f'Date generation : {today_str}', ln=True)
+        pdf.ln(5)
+
+        summary = analysis_data['analysis_summary']
+        action = analysis_data['financial_action']
+        
+        pdf.set_font('helvetica', 'B', 14)
+        pdf.cell(0, 10, 'Synthese Globale', ln=True)
+        pdf.line(15, pdf.get_y(), 195, pdf.get_y()) 
+        pdf.ln(2)
+        
+        pdf.set_font('helvetica', '', 12)
+        stats_labels = [
+            ("Transactions scannees :", summary['total_scanned_lines']),
+            ("Abonnements detectes :", summary['subscriptions_detected']),
+            ("Perte mensuelle estimee :", f"{summary['monthly_loss_identified']} EUR"),
+            ("Projection annuelle :", f"{summary['yearly_loss_projected']} EUR")
+        ]
+        
+        for label, value in stats_labels:
+            pdf.cell(100, 8, label, border=0)
+            pdf.set_font('helvetica', 'B', 12)
+            pdf.cell(0, 8, str(value), ln=True, align='R')
+            pdf.set_font('helvetica', '', 12)
+        
+        pdf.ln(5)
+        
+        # Box Verte Gain
+        pdf.set_fill_color(232, 248, 245) 
+        y_pos = pdf.get_y()
+        pdf.rect(15, y_pos, 180, 20, 'F')
+        pdf.set_xy(15, y_pos+5)
+        pdf.set_font('helvetica', 'B', 14)
+        pdf.set_text_color(39, 174, 96) 
+        pdf.cell(180, 10, f"POTENTIEL NET MENSUEL : +{action['client_savings_net_monthly']} EUR", align='C')
+        pdf.set_text_color(50, 50, 50) 
+        
+        pdf.ln(25)
+        
+        # Détails
+        pdf.set_font('helvetica', 'B', 14)
+        pdf.cell(0, 10, 'Detail des Abonnements', ln=True)
+        pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+        pdf.ln(2)
+        
+        pdf.set_font('helvetica', 'B', 10)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(60, 8, 'Categorie', border=1, fill=True)
+        pdf.cell(60, 8, 'Montant / Mois', border=1, fill=True, align='C')
+        pdf.cell(60, 8, 'Reference Anonyme', border=1, fill=True, align='C')
+        pdf.ln()
+        
+        pdf.set_font('helvetica', '', 10)
+        items = analysis_data['detected_items_anonymized']
+        
+        if not items:
+            pdf.cell(180, 8, 'Aucun abonnement suspect detecte.', border=1)
+        else:
+            for item in items:
+                cat_readable = item['category_code'].replace('_', ' ').title()
+                pdf.cell(60, 8, cat_readable, border=1)
+                pdf.cell(60, 8, f"{item['amount_monthly']} EUR", border=1, align='C')
+                pdf.cell(60, 8, f"#{item['ref_hash']}", border=1, align='C')
+                pdf.ln()
+                
+        # Pied de page
+        pdf.y = 270
+        pdf.set_font('helvetica', 'I', 8)
+        pdf.set_text_color(150, 150, 150)
+        pdf.cell(0, 10, 'Ce rapport est confidentiel et genere automatiquement par Agent Sentinel.', align='C')
+        
+        # Sortie du PDF (Méthode robuste)
+        output_bytes = pdf.output(dest='S').encode('latin-1')
+        
+        filename = f"Sentinel_Audit_{uid}.pdf"
+        headers = {'Content-Disposition': f'attachment; filename="{filename}"'}
+        
+        return Response(output_bytes, mimetype='application/pdf', headers=headers)
+
+    except Exception as e:
+        print(f"PDF Generation Error: {str(e)}")
+        return f"<h1>Erreur Technique</h1><p>{str(e)}</p>", 500
 
 @app.route('/salt-edge/callback', methods=['GET'])
 def salt_edge_callback():
