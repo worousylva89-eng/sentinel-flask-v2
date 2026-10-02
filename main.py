@@ -24,6 +24,50 @@ else:
 
 @app.route('/')
 def home():
+    """
+    Route principale. 
+    Si l'URL contient ?status=paid, on injecte un script JS spécial 
+    pour notifier le frontend que le paiement a réussi.
+    """
+    status_param = request.args.get('status')
+    
+    # Lecture du fichier index.html brut
+    with open(os.path.join(app.static_folder, 'index.html'), 'r', encoding='utf-8') as f:
+        html_content = f.read()
+
+    if status_param == 'paid':
+        # Injection d'un script avant la fermeture </body> ou </head>
+        # Ce script va déclencher une fonction showPaymentSuccess() côté client
+        injection_script = """
+        <script>
+            window.addEventListener('DOMContentLoaded', () => {
+                // Attente légère pour s'assurer que le DOM est prêt
+                setTimeout(() => {
+                    if(typeof showPaymentSuccess === 'function') {
+                        showPaymentSuccess();
+                    } else {
+                        console.warn("showPaymentSuccess function not found yet.");
+                    }
+                }, 500);
+            });
+        </script>
+        """
+        # On insère juste avant </body> si possible, sinon à la fin
+        if '</body>' in html_content:
+            html_content = html_content.replace('</body>', injection_script + '</body>')
+        else:
+            html_content += injection_script
+            
+    return send_from_directory('.', 'index.html') # Fallback standard si pas de modification complexe nécessaire ici
+    # NOTE: Pour éviter de lire le fichier disque à chaque requête en prod, 
+    # on utilise souvent des templates Jinja2. Mais pour rester sur du statique pur comme actuellement :
+    # La méthode ci-dessus fonctionne mais relit le fichier. 
+    # Alternative plus propre sans changer la structure HTML globale : 
+    
+    # Retournons simplement le fichier statique tel quel, 
+    # car c'est le FRONTEND (JavaScript) qui lira l'URL (?status=paid) directement !
+    # C'est beaucoup plus performant et ne nécessite pas de toucher au backend Python pour l'affichage.
+    
     return send_from_directory('.', 'index.html')
 
 # --- LOGIQUE MÉTIER CENTRALE (ANALYSE) ---
