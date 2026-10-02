@@ -1,17 +1,11 @@
 import os
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, send_from_directory, Response
+from flask import Flask, request, jsonify, send_from_directory
 import requests
 import json
 import random
 from datetime import datetime, timedelta
 import stripe
-# Importation sécurisée de FPDF
-try:
-    from fpdf import FPDF
-except ImportError:
-    print("CRITICAL WARNING: fpdf2 not installed! Check requirements.txt")
-    FPDF = None 
 
 # --- CONFIGURATION ENVIRONNEMENT ---
 load_dotenv()
@@ -22,7 +16,6 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 
 app = Flask(__name__, static_folder='.')
 
-# Configure Stripe
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
@@ -188,127 +181,20 @@ def create_checkout_session():
         print(f"Stripe Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# --- GÉNÉRATION DU RAPPORT PDF (VERSION FINALE & ROBUSTE) ---
-@app.route('/generate-report-pdf/<uid>', methods=['GET'])
-def generate_report_pdf(uid):
-    """Génère et retourne le PDF basé sur l'analyse stockée sous cet UID."""
-    
-    if not FPDF:
-         return "<h1>Erreur</h1><p>Librairie PDF manquante.</p>", 500
-
+# --- NOUVELLE ROUTE RAPIDE : RETOURNE LES DONNÉES BRUTES POUR LE FRONTEND ---
+@app.route('/get-report-data/<uid>', methods=['GET'])
+def get_report_data(uid):
+    """Renvoie simplement les JSON des analyses sans générer de PDF lourd."""
     analysis_data = last_analyses_store.get(uid)
     
     if not analysis_data:
-        return "<h1>Erreur</h1><p>Rapport introuvable ou expiré.</p>", 404
-
-    try:
-        pdf = FPDF(unit='mm', format='A4')
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.add_page()
+        return jsonify({"error": "Rapport introuvable ou expiré."}), 404
         
-        # En-tête Coloré
-        pdf.set_fill_color(22, 163, 74) # Vert Sentinel
-        pdf.rect(0, 0, 210, 30, 'F')
-        pdf.set_y(10)
-        pdf.set_text_color(255, 255, 255)
-        pdf.set_font('helvetica', 'B', 20)
-        pdf.cell(0, 10, 'AGENT SENTINEL', ln=True, align='C')
-        pdf.set_font('helvetica', '', 12)
-        pdf.cell(0, 10, 'Rapport Audit Financier', ln=True, align='C')
-        
-        # Corps du document
-        pdf.ln(10)
-        pdf.set_text_color(50, 50, 50)
-        pdf.set_x(15)
-        
-        today_str = datetime.now().strftime("%d/%m/%Y")
-        pdf.set_font('helvetica', 'I', 10)
-        pdf.cell(0, 10, f'Date generation : {today_str}', ln=True)
-        pdf.ln(5)
-
-        summary = analysis_data['analysis_summary']
-        action = analysis_data['financial_action']
-        
-        pdf.set_font('helvetica', 'B', 14)
-        pdf.cell(0, 10, 'Synthese Globale', ln=True)
-        pdf.line(15, pdf.get_y(), 195, pdf.get_y()) 
-        pdf.ln(2)
-        
-        pdf.set_font('helvetica', '', 12)
-        stats_labels = [
-            ("Transactions scannees :", summary['total_scanned_lines']),
-            ("Abonnements detectes :", summary['subscriptions_detected']),
-            ("Perte mensuelle estimee :", f"{summary['monthly_loss_identified']} EUR"),
-            ("Projection annuelle :", f"{summary['yearly_loss_projected']} EUR")
-        ]
-        
-        for label, value in stats_labels:
-            pdf.cell(100, 8, label, border=0)
-            pdf.set_font('helvetica', 'B', 12)
-            pdf.cell(0, 8, str(value), ln=True, align='R')
-            pdf.set_font('helvetica', '', 12)
-        
-        pdf.ln(5)
-        
-        # Box Verte Gain
-        pdf.set_fill_color(232, 248, 245) 
-        y_pos = pdf.get_y()
-        pdf.rect(15, y_pos, 180, 20, 'F')
-        pdf.set_xy(15, y_pos+5)
-        pdf.set_font('helvetica', 'B', 14)
-        pdf.set_text_color(39, 174, 96) 
-        pdf.cell(180, 10, f"POTENTIEL NET MENSUEL : +{action['client_savings_net_monthly']} EUR", align='C')
-        pdf.set_text_color(50, 50, 50) 
-        
-        pdf.ln(25)
-        
-        # Détails
-        pdf.set_font('helvetica', 'B', 14)
-        pdf.cell(0, 10, 'Detail des Abonnements', ln=True)
-        pdf.line(15, pdf.get_y(), 195, pdf.get_y())
-        pdf.ln(2)
-        
-        pdf.set_font('helvetica', 'B', 10)
-        pdf.set_fill_color(240, 240, 240)
-        pdf.cell(60, 8, 'Categorie', border=1, fill=True)
-        pdf.cell(60, 8, 'Montant / Mois', border=1, fill=True, align='C')
-        pdf.cell(60, 8, 'Reference Anonyme', border=1, fill=True, align='C')
-        pdf.ln()
-        
-        pdf.set_font('helvetica', '', 10)
-        items = analysis_data['detected_items_anonymized']
-        
-        if not items:
-            pdf.cell(180, 8, 'Aucun abonnement suspect detecte.', border=1)
-        else:
-            for item in items:
-                cat_readable = item['category_code'].replace('_', ' ').title()
-                pdf.cell(60, 8, cat_readable, border=1)
-                pdf.cell(60, 8, f"{item['amount_monthly']} EUR", border=1, align='C')
-                pdf.cell(60, 8, f"#{item['ref_hash']}", border=1, align='C')
-                pdf.ln()
-                
-        # Pied de page
-        pdf.y = 270
-        pdf.set_font('helvetica', 'I', 8)
-        pdf.set_text_color(150, 150, 150)
-        pdf.cell(0, 10, 'Ce rapport est confidentiel et genere automatiquement par Agent Sentinel.', align='C')
-        
-        # CORRECTION CRUCIALE POUR FPDF2 V2.X+
-        # On récupère directement le buffer binaire sans encodage manuel
-        pdf_output = pdf.output()
-        
-        filename = f"Sentinel_Audit_{uid}.pdf"
-        headers = {'Content-Disposition': f'attachment; filename="{filename}"'}
-        
-        # Flask accepte nativement les bytes/bytearray pour mimetype application/pdf
-        return Response(pdf_output, mimetype='application/pdf', headers=headers)
-
-    except Exception as e:
-        print(f"PDF Generation Error: {str(e)}")
-        import traceback
-        traceback.print_exc() # Pour voir l'erreur complète dans les logs Render si besoin
-        return f"<h1>Erreur Technique</h1><pre>{traceback.format_exc()}</pre>", 500
+    return jsonify({
+        "status": "success",
+        "data": analysis_data,
+        "generated_at": datetime.now().isoformat()
+    })
 
 @app.route('/salt-edge/callback', methods=['GET'])
 def salt_edge_callback():
