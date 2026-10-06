@@ -15,7 +15,7 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
-# Clés Salt Edge (Renommées pour clarté)
+# Clés Salt Edge
 SE_LOGIN = os.getenv("SALTEDGE_CLIENT_ID")      
 SE_API_KEY = os.getenv("SALTEDGE_SECRET_KEY")   
 SE_BASE_URL = "https://api.saltedge.com/api/v4" 
@@ -160,7 +160,7 @@ def connect_real_salt_edge():
     """Initialise une connexion bancaire réelle via Salt Edge"""
     token = get_salt_edge_token()
     if not token:
-        # Fallback vers simulation si l'API échoue (utile pour débugger sans bloquer le site)
+        # Fallback vers simulation si l'API échoue
         print("🔄 Mode Simulation activé car Salt Edge indisponible.")
         simulated_transactions = generate_random_bank_transactions(count=8)
         analysis_result = perform_analysis(simulated_transactions)
@@ -173,17 +173,22 @@ def connect_real_salt_edge():
             "temp_user_id": temp_id 
         }), 200
 
+    # ✅ CORRECTION 1 & 2 : Headers JSON:API et Structure Payload
     headers = {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/vnd.api+json",
+        "Accept": "application/vnd.api+json"
     }
     
-    # ✅ CORRECTION ICI : Utilisation du bon ID de démonstration Salt Edge
     payload = {
-        "provider_connection": {
-            "provider_id": "salt-edge-demo-provider", 
-            "return_url": request.url_root + "/salt-edge/callback",
-            "state": "unique_state_123" 
+        "data": {
+            "type": "provider_connections",
+            "attributes": {
+                # ✅ CORRECTION 3 : L'ID officiel de démonstration
+                "provider_id": "demo-provider-connection", 
+                "return_url": request.url_root.rstrip('/') + "/salt-edge/callback",
+                "state": "unique_state_123"
+            }
         }
     }
     
@@ -202,10 +207,11 @@ def connect_real_salt_edge():
             })
         else:
             error_msg = resp.text
-            print(f"Erreur création connexion Salt Edge: {error_msg}")
+            print(f"❌ Erreur création connexion Salt Edge: {error_msg}")
             return jsonify({"error": "Échec création connexion", "details": error_msg}), 400
             
     except Exception as e:
+        print(f"💥 Exception lors de la création de connexion: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # --- CALLBACK SALT EDGE (Reçoit les données après login client) ---
@@ -222,7 +228,10 @@ def salt_edge_callback():
     if not token:
          return "<h2>❌ Erreur: Impossible de récupérer le token.</h2>"
 
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.api+json"
+    }
     
     try:
         # 1. Récupérer les comptes liés à cette connexion
