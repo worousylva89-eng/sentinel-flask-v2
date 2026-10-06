@@ -15,10 +15,10 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
-# Clés Salt Edge (Nouvelles !)
-SE_LOGIN = os.getenv("SALTEDGE_CLIENT_ID")      # Renommé pour clarté
-SE_API_KEY = os.getenv("SALTEDGE_SECRET_KEY")   # Renommé pour clarté
-SE_BASE_URL = "https://api.saltedge.com/api/v4" # Endpoint officiel V4
+# Clés Salt Edge (Renommées pour clarté)
+SE_LOGIN = os.getenv("SALTEDGE_CLIENT_ID")      
+SE_API_KEY = os.getenv("SALTEDGE_SECRET_KEY")   
+SE_BASE_URL = "https://api.saltedge.com/api/v4" 
 
 app = Flask(__name__, static_folder='.')
 
@@ -178,13 +178,12 @@ def connect_real_salt_edge():
         "Content-Type": "application/json"
     }
     
-    # On crée un Provider Connection
-    # NOTE: provider_id doit exister chez Salt Edge. Exemple générique ci-dessous.
+    # ✅ CORRECTION ICI : Utilisation du bon ID de démonstration Salt Edge
     payload = {
         "provider_connection": {
-            "provider_id": "demo-provider", # ⚠️ Remplace par un vrai ID banque (ex: bnp-paribas-france) plus tard
+            "provider_id": "salt-edge-demo-provider", 
             "return_url": request.url_root + "/salt-edge/callback",
-            "state": "unique_state_123" # Pour sécurité CSRF
+            "state": "unique_state_123" 
         }
     }
     
@@ -214,7 +213,7 @@ def connect_real_salt_edge():
 def salt_edge_callback():
     """Endpoint appelé par Salt Edge quand le client a validé sa connexion"""
     state = request.args.get('state')
-    provider_connection_id = request.args.get('id') # L'ID retourné par Salt Edge
+    provider_connection_id = request.args.get('id') 
     
     if not provider_connection_id:
         return "<h2>❌ Erreur: ID manquant</h2><a href='/'>Retour Accueil</a>"
