@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, redirect
 import requests
 import json
 import random
@@ -10,14 +10,17 @@ import stripe
 # --- CONFIGURATION ENVIRONNEMENT ---
 load_dotenv()
 
-SE_LOGIN = os.getenv("SE_LOGIN")
-SE_API_KEY = os.getenv("SE_API_KEY")
+# Clés Stripe
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-
-app = Flask(__name__, static_folder='.')
-
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
+
+# Clés Salt Edge (Nouvelles !)
+SE_LOGIN = os.getenv("SALTEDGE_CLIENT_ID")      # Renommé pour clarté
+SE_API_KEY = os.getenv("SALTEDGE_SECRET_KEY")   # Renommé pour clarté
+SE_BASE_URL = "https://api.saltedge.com/api/v4" # Endpoint officiel V4
+
+app = Flask(__name__, static_folder='.')
 
 # --- STOCKAGE TEMPORAIRE DES ANALYSES ---
 last_analyses_store = {} 
@@ -68,7 +71,7 @@ def perform_analysis(transactions_list):
         "detected_items_anonymized": detected
     }
 
-# --- GENERATEUR DE DONNEES BANCAIRES FICTIVES DYNAMIQUES ---
+# --- GENERATEUR DE DONNEES FICTIVES (Fallback / Test Local) ---
 def generate_random_bank_transactions(count=8):
     base_date = datetime.now() - timedelta(days=random.randint(1, 30))
     
@@ -127,26 +130,151 @@ def analyze_manual():
         "temp_user_id": user_id 
     })
 
-# --- SIMULATEUR BANCAIRE SALT EDGE ---
+# ==========================================
+# INTÉGRATION RÉELLE SALT EDGE (OPEN BANKING)
+# ==========================================
+
+def get_salt_edge_token():
+    """Récupère le token d'accès OAuth2 auprès de Salt Edge"""
+    if not SE_LOGIN or not SE_API_KEY:
+        print("⚠️ ERREUR: Variables SALTEDGE_CLIENT_ID ou SECRET_KEY manquantes.")
+        return None
+        
+    try:
+        response = requests.post(
+            f"{SE_BASE_URL}/oauth/token",
+            data={"grant_type": "client_credentials"},
+            auth=(SE_LOGIN, SE_API_KEY)
+        )
+        if response.status_code == 200:
+            return response.json().get("access_token")
+        else:
+            print(f"❌ Échec authentification Salt Edge: {response.text}")
+            return None
+    except Exception as e:
+        print(f"💥 Exception connexion Salt Edge: {str(e)}")
+        return None
+
 @app.route('/salt-edge/connect', methods=['POST'])
-def connect_salt_edge_simulated():
-    simulated_transactions = generate_random_bank_transactions(count=8)
-    analysis_result = perform_analysis(simulated_transactions)
-    
-    temp_id = "sim_" + str(random.randint(100000, 999999))
-    last_analyses_store[temp_id] = analysis_result
-    
-    response_payload = {
-        "status": "success",
-        "source": "SALT_EDGE_SIMULATION_MODE_DYNAMIC",
-        "message": "Connexion sécurisée établie. Données analysées.",
-        "data": analysis_result,
-        "raw_transactions_count": len(simulated_transactions),
-        "security_note": "Demo Mode Active - No real banking data accessed.",
-        "temp_user_id": temp_id 
+def connect_real_salt_edge():
+    """Initialise une connexion bancaire réelle via Salt Edge"""
+    token = get_salt_edge_token()
+    if not token:
+        # Fallback vers simulation si l'API échoue (utile pour débugger sans bloquer le site)
+        print("🔄 Mode Simulation activé car Salt Edge indisponible.")
+        simulated_transactions = generate_random_bank_transactions(count=8)
+        analysis_result = perform_analysis(simulated_transactions)
+        temp_id = "sim_" + str(random.randint(100000, 999999))
+        last_analyses_store[temp_id] = analysis_result
+        return jsonify({
+            "status": "simulation_mode",
+            "message": "Salt Edge inaccessible, utilisation de données fictives.",
+            "data": analysis_result,
+            "temp_user_id": temp_id 
+        }), 200
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
     }
     
-    return jsonify(response_payload)
+    # On crée un Provider Connection
+    # NOTE: provider_id doit exister chez Salt Edge. Exemple générique ci-dessous.
+    payload = {
+        "provider_connection": {
+            "provider_id": "demo-provider", # ⚠️ Remplace par un vrai ID banque (ex: bnp-paribas-france) plus tard
+            "return_url": request.url_root + "/salt-edge/callback",
+            "state": "unique_state_123" # Pour sécurité CSRF
+        }
+    }
+    
+    try:
+        resp = requests.post(f"{SE_BASE_URL}/provider_connections", json=payload, headers=headers)
+        
+        if resp.status_code == 201:
+            connection_data = resp.json()["data"]["attributes"]
+            redirect_url = connection_data["redirect_uri"]
+            
+            return jsonify({
+                "status": "success",
+                "source": "SALT_EDGE_LIVE",
+                "message": "Redirection vers la page de login bancaire...",
+                "redirect_url": redirect_url
+            })
+        else:
+            error_msg = resp.text
+            print(f"Erreur création connexion Salt Edge: {error_msg}")
+            return jsonify({"error": "Échec création connexion", "details": error_msg}), 400
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# --- CALLBACK SALT EDGE (Reçoit les données après login client) ---
+@app.route('/salt-edge/callback', methods=['GET'])
+def salt_edge_callback():
+    """Endpoint appelé par Salt Edge quand le client a validé sa connexion"""
+    state = request.args.get('state')
+    provider_connection_id = request.args.get('id') # L'ID retourné par Salt Edge
+    
+    if not provider_connection_id:
+        return "<h2>❌ Erreur: ID manquant</h2><a href='/'>Retour Accueil</a>"
+        
+    token = get_salt_edge_token()
+    if not token:
+         return "<h2>❌ Erreur: Impossible de récupérer le token.</h2>"
+
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    try:
+        # 1. Récupérer les comptes liés à cette connexion
+        accounts_resp = requests.get(
+            f"{SE_BASE_URL}/accounts?filter[provider_connection_id]={provider_connection_id}",
+            headers=headers
+        )
+        
+        if accounts_resp.status_code != 200:
+             return f"<h2>❌ Erreur récupération comptes: {accounts_resp.text}</h2>"
+             
+        accounts = accounts_resp.json().get("data", [])
+        if not accounts:
+            return "<h2>⚠️ Aucun compte trouvé.</h2>"
+            
+        account_id = accounts[0]["id"]
+        
+        # 2. Récupérer les transactions de ce compte
+        txns_resp = requests.get(
+            f"{SE_BASE_URL}/transactions?filter[account_id]={account_id}&limit=50",
+            headers=headers
+        )
+        
+        if txns_resp.status_code != 200:
+             return f"<h2>❌ Erreur récupération transactions: {txns_resp.text}</h2>"
+             
+        raw_txns = txns_resp.json().get("data", [])
+        
+        # Transformer les données Salt Edge au format attendu par notre analyseur
+        formatted_txns = []
+        for t in raw_txns:
+            attrs = t.get("attributes", {})
+            formatted_txns.append({
+                "date": attrs.get("booked_at", "")[:10],
+                "label": attrs.get("description", ""),
+                "amount": float(attrs.get("amount", 0))
+            })
+            
+        # 3. Analyser les vraies données !
+        analysis_result = perform_analysis(formatted_txns)
+        
+        # Stocker temporairement avec un ID unique basé sur le callback
+        temp_uid = "real_" + str(hash(provider_connection_id))[-6:]
+        last_analyses_store[temp_uid] = analysis_result
+        
+        # Rediriger vers le frontend avec l'UID pour afficher le rapport
+        return redirect(f"/?report_ready=true&uid={temp_uid}")
+        
+    except Exception as e:
+        print(f"Erreur critique Callback Salt Edge: {str(e)}")
+        return f"<h2>💥 Crash Serveur: {str(e)}</h2>"
 
 # --- INTÉGRATION STRIPE CHECKOUT ---
 @app.route('/create-checkout-session', methods=['POST'])
@@ -195,10 +323,6 @@ def get_report_data(uid):
         "data": analysis_data,
         "generated_at": datetime.now().isoformat()
     })
-
-@app.route('/salt-edge/callback', methods=['GET'])
-def salt_edge_callback():
-    return "<h2>✅ Callback Endpoint Active</h2><a href='/'>Retour Accueil</a>"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
