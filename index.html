@@ -50,9 +50,8 @@
         .success-icon { font-size: 4em; color: #2e7d32; margin-bottom: 20px; display: block; }
         .success-title { color: #1b5e20; font-size: 2em; margin: 0 0 15px; font-weight: bold; }
         .success-desc { color: #555; font-size: 1.1em; margin-bottom: 30px; line-height: 1.5; }
-        .next-steps-box { background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; padding: 20px; text-align: left; max-width: 400px; margin: 0 auto 30px; }
-        .next-steps-box h3 { margin-top: 0; color: #0d47a1; font-size: 1.1em; }
-        .next-steps-box ol { margin: 10px 0; padding-left: 20px; color: #333; line-height: 1.6; }
+        .next-steps-box { background: #e8f5e9; border: 1px solid #4caf50; border-radius: 8px; padding: 20px; text-align: left; max-width: 400px; margin: 0 auto 30px; }
+        .next-steps-box h3 { margin-top: 0; color: #1b5e20; font-size: 1.1em; }
         .btn-reset { background: #1a237e; color: white; border: none; padding: 12px 30px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
         .btn-reset:hover { background: #283593; }
 
@@ -133,52 +132,28 @@ function showSuccessScreen() {
     const formContent = document.getElementById('formContent');
     const successView = document.getElementById('successView');
     
-    // Cache le formulaire principal
     if(formContent) formContent.style.display = 'none';
     
-    // On tente de récupérer l'email saisi juste avant le paiement (stocké en session ou prompt)
-    // Comme Stripe redirige, sessionStorage peut être perdu selon les navigateurs mobiles stricts.
-    // Solution robuste : On demande confirmation rapide OU on génère un lien mailto vide mais clair.
-    
-    let userEmail = sessionStorage.getItem('audit_email'); 
-    if(!userEmail) {
-       // Si pas trouvé, on laisse le champ libre dans le mailto
-       userEmail = ''; 
-    }
+    // Récupère l'UID sauvegardé avant le paiement Stripe
+    const uid = sessionStorage.getItem('audit_uid') || 'unknown';
 
-    // Construction du lien Mailto intelligent
-    // Remplace support@sentinelfinance.com par TON VRAI EMAIL PRO !
-    const mySupportEmail = "worouleopold27@gmail.com"; 
-    
-    const subject = encodeURIComponent("Demande Rapport Audit Sentinel - Paiement Validé");
-    const bodyTemplate = `Bonjour,\n\nJe viens de valider mon audit financier.\n\nMon Email : ${userEmail}\nIdentifiant Transaction : [À compléter depuis mes logs]\n\nMerci de m'envoyer mon rapport personnalisé.\nCordialement.`;
-    const body = encodeURIComponent(bodyTemplate);
-
-    const mailtoLink = `mailto:${mySupportEmail}?subject=${subject}&body=${body}`;
-
-    // Affiche le message de succès avec bouton d'action réel
     successView.innerHTML = `
         <div class="success-container">
             <span class="success-icon">✅</span>
             <h2 class="success-title">Paiement Reçu !</h2>
-            <p class="success-desc">Merci ! Votre transaction est validée.</p>
+            <p class="success-desc">Merci ! Votre transaction est validée.<br>Votre rapport détaillé est prêt.</p>
             
-            <div class="next-steps-box">
-                <h3>📧 Étape Finale : Recevez votre Rapport</h3>
-                <p>Pour recevoir votre analyse personnalisée sous 24h :</p>
-                
-                <!-- BOUTON MAILTO MAGIQUE -->
-                <a href="${mailtoLink}" target="_blank" class="btn-primary-large" style="display:block; text-decoration:none; background:#1976d2; margin-top:15px;">
-                    📨 Cliquer ici pour envoyer ma demande
-                </a>
-                
-                <small style="display:block; margin-top:10px; color:#666;">
-                    * Cette action ouvrira votre messagerie avec un message pré-rempli. Appuyez simplement sur "Envoyer".
-                </small>
-            </div>
+            <!-- LIEN DIRECT VERS LE RAPPORT AUTO-GÉNÉRÉ -->
+            <a href="/final-report/${uid}" target="_blank" class="btn-primary-large" style="display:block; text-decoration:none; background:#d32f2f; margin-top:15px; font-size:1.2em; padding:20px;">
+                📄 VOIR MON RAPPORT COMPLET MAINTENANT
+            </a>
+            
+            <small style="display:block; margin-top:15px; color:#666;">
+                * Le rapport s'ouvrira dans un nouvel onglet. Vous pourrez l'imprimer ou le sauvegarder en PDF.
+            </small>
 
             <button onclick="location.href='/'" class="btn-reset" style="margin-top:20px;">
-                🔄 Retour Accueil
+                🔄 Faire un autre audit
             </button>
         </div>
     `;
