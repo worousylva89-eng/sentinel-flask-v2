@@ -6,6 +6,7 @@ import json
 import random
 import csv
 import io
+import base64
 from datetime import datetime, timedelta
 import stripe
 
@@ -19,7 +20,7 @@ if STRIPE_SECRET_KEY:
 
 app = Flask(__name__, static_folder='.')
 
-# --- STOCKAGE TEMPORAIRE DES ANALYSES ---
+# --- STOCKAGE TEMPORAIRE DES ANALYSES (Backup local) ---
 last_analyses_store = {} 
 
 @app.route('/')
@@ -71,7 +72,6 @@ def perform_analysis(transactions_list):
 # --- ROUTE API UPLOAD DE FICHIERS (CSV / TXT) ---
 @app.route('/analyze', methods=['POST'])
 def analyze_upload():
-    # Vérifie si un fichier a été envoyé via le champ 'file' du form-data
     if 'file' not in request.files:
         return jsonify({"error": "Aucun fichier reçu"}), 400
     
@@ -83,38 +83,41 @@ def analyze_upload():
         content = file.read().decode('utf-8')
         transactions = []
         
-        # Analyse basique CSV (Label, Amount) - Adaptable selon format banque
         reader = csv.reader(io.StringIO(content))
-        next(reader, None) # Skip header si présent
+        next(reader, None) 
         
         for row in reader:
             if len(row) >= 2:
                 label = row[0].strip()
                 try:
-                    # Nettoie les montants (remplace virgule par point, retire espaces)
                     amount_str = row[1].replace(',', '.').replace(' ', '').strip()
                     amount = float(amount_str)
-                    transactions.append({
-                        "label": label,
-                        "amount": amount
-                    })
+                    transactions.append({"label": label, "amount": amount})
                 except ValueError:
                     continue
                     
         if not transactions:
-             return jsonify({"error": "Format invalide ou données insuffisantes. Assurez-vous que c'est un CSV avec [Libellé, Montant]"}), 400
+             return jsonify({"error": "Format invalide ou données insuffisantes."}), 400
 
         result_data = perform_analysis(transactions)
         
-        user_id = "guest_" + str(random.randint(1000,9999))
+        # Génération d'un ID unique court
+        user_id = "guest_" + str(random.randint(100000,999999))
+        
+        # Sauvegarde locale (au cas où)
         last_analyses_store[user_id] = result_data
+        
+        # ENCODAGE BASE64 POUR L'URL (LA CLÉ DU SUCCÈS)
+        # On convertit le JSON en chaîne, puis on encode en base64 url-safe
+        data_json = json.dumps(result_data)
+        encoded_token = base64.urlsafe_b64encode(data_json.encode()).decode()
         
         return jsonify({
             "status": "success",
             "message": "Analyse terminée.",
             "data": result_data,
-            "signature": "SECURE_HASH_V2_UNIFIED",
-            "temp_user_id": user_id 
+            "temp_user_id": user_id,
+            "report_token": encoded_token  # <-- Le nouveau champ crucial
         })
 
     except Exception as e:
@@ -128,6 +131,7 @@ def create_checkout_session():
         data = request.get_json()
         customer_email = data.get('email', 'client@example.com')
         temp_user_id = data.get('temp_user_id', 'unknown') 
+        report_token = data.get('report_token', '') # Récupère le token encodé
         
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -143,7 +147,8 @@ def create_checkout_session():
                 'quantity': 1,
             }],
             mode='payment',
-            success_url=f"https://sentinel-flask-v2-2.onrender.com/?status=paid&uid={temp_user_id}", 
+            # On passe le TOKEN dans l'URL de succès au lieu de juste l'UID
+            success_url=f"https://sentinel-flask-v2-2.onrender.com/?status=paid&uid={temp_user_id}&token={report_token}", 
             cancel_url="https://sentinel-flask-v2-2.onrender.com/",
             metadata={'customer_email': customer_email, 'internal_uid': temp_user_id}
         )
@@ -154,37 +159,47 @@ def create_checkout_session():
         print(f"Stripe Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# --- NOUVELLE ROUTE RAPIDE : RETOURNE LES DONNÉES BRUTES POUR LE FRONTEND ---
-@app.route('/get-report-data/<uid>', methods=['GET'])
-def get_report_data(uid):
-    """Renvoie simplement les JSON des analyses sans générer de PDF lourd."""
-    analysis_data = last_analyses_store.get(uid)
-    
-    if not analysis_data:
-        return jsonify({"error": "Rapport introuvable ou expiré."}), 404
-        
-    return jsonify({
-        "status": "success",
-        "data": analysis_data,
-        "generated_at": datetime.now().isoformat()
-    })
-
 # ==========================================
-# GÉNÉRATEUR DE RAPPORT FINAL INSTANTANÉ (HTML)
+# GÉNÉRATEUR DE RAPPORT FINAL INSTANTANÉ (VERSION ROBUSTE)
 # ==========================================
 @app.route('/final-report/<uid>', methods=['GET'])
 def serve_final_report(uid):
-    """Génère et retourne le rapport HTML complet instantanément."""
-    analysis_data = last_analyses_store.get(uid)
+    """Génère le rapport soit depuis la mémoire, soit depuis le token URL."""
     
+    analysis_data = None
+    
+    # 1. Essayer de trouver dans la mémoire vive (rapide)
+    if uid in last_analyses_store:
+        analysis_data = last_analyses_store[uid]
+    else:
+        # 2. Sinon, essayer de décoder le token passé dans l'URL (?token=...)
+        token_param = request.args.get('token')
+        if token_param:
+            try:
+                decoded_bytes = base64.urlsafe_b64decode(token_param.encode())
+                analysis_data = json.loads(decoded_bytes.decode())
+            except Exception as decode_err:
+                print(f"Erreur décodage token: {decode_err}")
+
+    # Si toujours rien -> Erreur propre
     if not analysis_data:
-        return "<h2>❌ Erreur : Rapport introuvable ou expiré.</h2><a href='/'>Retour Accueil</a>", 404
+        return f"""
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head><title>Rapport Indisponible</title></head>
+        <body style="font-family:sans-serif; text-align:center; padding:50px;">
+            <h2 style="color:#d32f2f;">⚠️ Session Expirée</h2>
+            <p>Votre session d'analyse a expiré pendant le traitement du paiement.</p>
+            <br>
+            <a href="/" style="background:#1a237e; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Retourner à l'accueil</a>
+        </body>
+        </html>
+        """, 404
         
     summary = analysis_data['analysis_summary']
     financial_action = analysis_data['financial_action']
     detected_items = analysis_data['detected_items_anonymized']
     
-    # Construction dynamique du tableau des abonnements détectés
     items_html = ""
     for item in detected_items:
         items_html += f"""
