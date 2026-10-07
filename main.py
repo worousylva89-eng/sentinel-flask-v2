@@ -108,7 +108,6 @@ def analyze_upload():
         last_analyses_store[user_id] = result_data
         
         # ENCODAGE BASE64 POUR L'URL (LA CLÉ DU SUCCÈS)
-        # On convertit le JSON en chaîne, puis on encode en base64 url-safe
         data_json = json.dumps(result_data)
         encoded_token = base64.urlsafe_b64encode(data_json.encode()).decode()
         
@@ -117,7 +116,7 @@ def analyze_upload():
             "message": "Analyse terminée.",
             "data": result_data,
             "temp_user_id": user_id,
-            "report_token": encoded_token  # <-- Le nouveau champ crucial
+            "report_token": encoded_token
         })
 
     except Exception as e:
@@ -131,7 +130,7 @@ def create_checkout_session():
         data = request.get_json()
         customer_email = data.get('email', 'client@example.com')
         temp_user_id = data.get('temp_user_id', 'unknown') 
-        report_token = data.get('report_token', '') # Récupère le token encodé
+        report_token = data.get('report_token', '') 
         
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -147,7 +146,6 @@ def create_checkout_session():
                 'quantity': 1,
             }],
             mode='payment',
-            # On passe le TOKEN dans l'URL de succès au lieu de juste l'UID
             success_url=f"https://sentinel-flask-v2-2.onrender.com/?status=paid&uid={temp_user_id}&token={report_token}", 
             cancel_url="https://sentinel-flask-v2-2.onrender.com/",
             metadata={'customer_email': customer_email, 'internal_uid': temp_user_id}
@@ -160,7 +158,7 @@ def create_checkout_session():
         return jsonify({"error": str(e)}), 500
 
 # ==========================================
-# GÉNÉRATEUR DE RAPPORT FINAL INSTANTANÉ (VERSION ROBUSTE)
+# GÉNÉRATEUR DE RAPPORT FINAL INSTANTANÉ (VERSION CORRECTE PDF)
 # ==========================================
 @app.route('/final-report/<uid>', methods=['GET'])
 def serve_final_report(uid):
@@ -225,8 +223,23 @@ def serve_final_report(uid):
             th {{ background:#1a237e; color:white; padding:15px; text-align:left; }}
             tr:nth-child(even) {{ background:#f5f5f5; }}
             .total-row td {{ font-weight:bold; font-size:1.2em; color:#d32f2f; border-top:2px solid #ddd; }}
-            .print-btn {{ display:inline-block; background:#2e7d32; color:white; padding:15px 30px; text-decoration:none; border-radius:6px; font-weight:bold; margin-top:30px; cursor:pointer; border:none; font-size:1em; }}
-            .print-btn:hover {{ background:#1b5e20; }}
+            
+            /* ✅ FIX CRUCIAL : Lien au lieu de Bouton pour compatibilité Mobile PDF */
+            .print-link {{ 
+                display:inline-block; 
+                background:#2e7d32; 
+                color:white; 
+                padding:15px 30px; 
+                text-decoration:none; 
+                border-radius:6px; 
+                font-weight:bold; 
+                margin-top:30px; 
+                cursor:pointer; 
+                font-size:1em;
+                transition: all 0.2s ease;
+            }}
+            .print-link:hover {{ background:#1b5e20; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }}
+            
             @media print {{ .no-print {{ display:none !important; }} body {{ padding:0; }} .container {{ box-shadow:none; }} }}
         </style>
     </head>
@@ -268,7 +281,10 @@ def serve_final_report(uid):
                 <li>Économies brutes réalisées avant frais : {summary['monthly_loss_identified']} €/mois.</li>
             </ul>
             
-            <button onclick="window.print()" class="print-btn no-print">🖨️ Imprimer / Sauvegarder en PDF</button>
+            <!-- ✅ LE LIEN MAGIQUE QUI FONCTIONNE PARTOUT -->
+            <a href="#" onclick="window.print(); return false;" class="print-link no-print">
+                🖨️ Imprimer / Sauvegarder en PDF
+            </a>
             <br><br>
             <a href="/" class="no-print" style="color:#666; text-decoration:none;">← Retour à l'accueil Sentinel Finance</a>
         </div>
