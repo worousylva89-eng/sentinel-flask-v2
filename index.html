@@ -3,543 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agent Sentinel - Analyse Financière IA</title>
-    <!-- AJOUT CRUCIAL : LIBRAIRIE JS-PDF POUR GÉNÉRER LE DOCUMENT ICI -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
+    <title>Sentinel Finance - Audit Automatisé</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; text-align: center; margin-bottom: 10px; }
-        p.subtitle { text-align: center; color: #7f8c8d; margin-bottom: 30px; }
-        
-        /* Styles pour la section Banque */
-        .bank-section { background: #f0fdf4; border: 2px solid #bbf7d0; padding: 20px; border-radius: 8px; margin-bottom: 25px; text-align: center; position: relative; overflow: hidden; }
-        .btn-bank { width: 100%; padding: 15px; background-color: #16a34a; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: all 0.3s ease; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; z-index: 2;}
-        .btn-bank:hover { background-color: #15803d; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3); }
-        .divider { display: flex; align-items: center; color: #94a3b8; font-size: 14px; margin: 20px 0; text-transform: uppercase; letter-spacing: 1px; }
-        .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; }
-        .divider:not(:empty)::before { margin-right: 10px; }
-        .divider:not(:empty)::after { margin-left: 10px; }
-
-        textarea { width: 100%; height: 150px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; resize: vertical; }
-        button.analyze-btn { width: 100%; padding: 15px; background-color: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: background 0.3s; margin-top: 20px; font-weight: bold; }
-        button.analyze-btn:hover { background-color: #c0392b; }
-        button:disabled { opacity: 0.7; cursor: not-allowed; }
-        
-        #result { margin-top: 30px; display: none; animation: fadeIn 0.5s; }
-        .card { background: #fff9db; border-left: 5px solid #f1c40f; padding: 15px; margin-bottom: 15px; border-radius: 4px; }
-        .stat-box { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed #eee; }
-        .big-number { font-size: 24px; font-weight: bold; color: #e74c3c; }
-        .green-text { color: #27ae60; font-weight: bold; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .loading { text-align: center; color: #3498db; display: none; margin-top: 10px; }
-        
-        /* Animation de scan bancaire */
-        .scan-overlay {
-            position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(22, 163, 74, 0.2), transparent);
-            animation: scanMove 2s infinite; z-index: 1; pointer-events: none;
-        }
-        @keyframes scanMove { 0% { left: -100%; } 100% { left: 100%; } }
-        
-        /* Style spécifique pour le bouton de paiement */
-        .pay-now-btn {
-            background-color: #635bff; /* Violet Stripe */
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-            width: 100%;
-            margin-top: 15px;
-        }
-        .pay-now-btn:hover { background-color: #534bd3; transform: scale(1.02); }
-        
-        /* Indicateur de chargement subtil */
-        .spinner-small {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { max-width: 600px; width: 100%; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; padding: 30px; text-align: center; }
+        .header h1 { margin: 0; font-size: 1.8em; letter-spacing: 1px; }
+        .header p { margin: 10px 0 0; opacity: 0.9; font-size: 0.95em; }
+        .content { padding: 30px; }
+        .premium-upload-box { background: #e8f5e9; border: 2px dashed #4caf50; border-radius: 8px; padding: 25px; text-align: center; transition: all 0.3s ease; cursor: pointer; position: relative; }
+        .premium-upload-box:hover { background: #c8e6c9; transform: translateY(-2px); }
+        .btn-primary-large { background: #2e7d32; color: white; border: none; padding: 15px 30px; font-size: 1.1em; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; width: 100%; transition: background 0.2s; }
+        .btn-primary-large:hover { background: #1b5e20; }
+        .btn-secondary-large { background: #ff9800; color: white; border: none; padding: 12px 25px; font-size: 1em; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; width: 100%; transition: background 0.2s; opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary-large.active { opacity: 1; cursor: pointer; }
+        .btn-secondary-large.active:hover { background: #f57c00; }
+        #fileNameDisplay { margin-top: 10px; color: #2e7d32; font-size: 0.9em; font-weight: bold; }
+        .summary-card { background: #fff3e0; border-left: 4px solid #ff9800; padding: 20px; margin-top: 20px; border-radius: 4px; text-align: left; }
+        .summary-card h4 { margin: 0 0 10px; color: #e65100; }
+        .summary-card p { margin: 5px 0; font-size: 0.95em; }
+        .pay-section { margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; display: none; } /* Caché au début */
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; vertical-align: middle; margin-right: 10px; }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* NOUVEAU STYLES POUR LE SUCCÈS POST-PAIEMENT */
-        #successBanner {
-            display: none;
-            background: #dcfce7;
-            border: 2px solid #22c55e;
-            color: #166534;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 25px;
-            animation: slideDown 0.5s ease-out;
-        }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .download-btn {
-            background-color: #16a34a;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 15px;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .download-btn:hover { background-color: #15803d; }
+        .footer-note { font-size: 0.8em; color: #888; margin-top: 20px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- BANNIÈRE DE SUCCÈS -->
-    <div id="successBanner">
-        <h2 style="margin:0 0 10px 0;">✅ Paiement Confirmé !</h2>
-        <p>Merci pour votre confiance. Votre audit financier complet est prêt.</p>
-        <button onclick="generateAndDownloadPdf()" class="download-btn">
-            📥 TÉLÉCHARGER MON RAPPORT PDF COMPLET
-        </button>
-        <p style="font-size:12px; margin-top:10px; color:#166534;">Un lien de téléchargement a également été envoyé par email.</p>
+    <div class="header">
+        <h1>🛡️ SENTINEL FINANCE</h1>
+        <p>Détectez vos abonnements cachés et récupérez votre pouvoir d'achat.</p>
     </div>
 
-    <h1>🛡️ Agent Sentinel</h1>
-    <p class="subtitle">Détectez vos abonnements cachés et récupérez votre pouvoir d'achat.</p>
+    <div class="content">
+        <!-- ZONE D'UPLOAD PREMIUM -->
+        <div class="premium-upload-box" onclick="document.getElementById('bankStatementInput').click()">
+            <h3 style="margin:0 0 10px; color:#1b5e20;">🔒 Audit Sécurisé & Confidentiel</h3>
+            <p style="font-size:0.9em; margin-bottom:15px;">Téléchargez votre relevé bancaire récent (format CSV recommandé).<br>Nos algorithmes détectent automatiquement vos pertes mensuelles.</p>
+            
+            <!-- Input caché mais déclenché par le clic sur la boîte -->
+            <input type="file" id="bankStatementInput" accept=".csv,.txt" style="display:none;">
+            
+            <button class="btn-primary-large" type="button">📂 Choisir mon Relevé Bancaire</button>
+            <div id="fileNameDisplay"></div>
+        </div>
 
-    <!-- SECTION 1 : CONNEXION BANCAIRE DIRECTE -->
-    <div class="bank-section" id="bankSection">
-        <div class="scan-overlay" style="display:none;" id="scanEffect"></div>
-        <h3 style="margin-top:0; color:#166534;">🔒 Connexion Sécurisée Open Banking</h3>
-        <p style="font-size:14px; color:#475569; margin-bottom:15px;">Analysez automatiquement vos comptes réels via protocole sécurisé (Mode Démo).</p>
-        
-        <button id="connectBankBtn" onclick="startSaltEdge()" class="btn-bank">
-            <span>🏦 SE CONNECTER À MA BANQUE</span>
+        <button id="startAnalysisBtn" disabled class="btn-secondary-large">
+            ⚡ Lancer l'Analyse IA (Gratuit)
         </button>
-        <div id="bankStatus" style="display:none; margin-top:10px; font-size:13px; color:#dc2626;"></div>
-    </div>
 
-    <div class="divider">OU SAISIE MANUELLE</div>
+        <!-- AFFICHAGE DU RÉSULTAT PRÉLIMINAIRE -->
+        <div id="resultsArea"></div>
 
-    <!-- SECTION 2 : SAISIE CSV CLASSIQUE -->
-    <label for="csvInput"><strong>Collez vos transactions (Format CSV)</strong></label><br><br>
-    <textarea id="csvInput" placeholder="Exemple :&#10;NETFLIX PREMIUM,-17.99&#10;CARREFOUR MARKET,-50.00&#10;SPOTIFY FAMILY,-14.99"></textarea>
-
-    <button id="analyzeBtn" onclick="sendToAI()" class="analyze-btn">⚡ ANALYSER MES COMPTES</button>
-
-    <div class="loading" id="loader">🤖 L'IA réfléchit...</div>
-
-    <div id="result">
-        <hr>
-        <h3 style="color:#2c3e50;">📊 Rapport d'Audit</h3>
-
-        <div class="stat-box">
-            <span>Total Scanné :</span>
-            <span id="totalLines">0 lignes</span>
-        </div>
-        <div class="stat-box">
-            <span>Abonnements Détectés :</span>
-            <span id="subsCount" class="big-number">0</span>
-        </div>
-        <div class="stat-box">
-            <span>Perte Mensuelle Estimée :</span>
-            <span id="monthlyLoss" class="big-number">0 €</span>
-        </div>
-        <div class="stat-box" style="background:#e8f8f5; padding:10px; border-radius:5px; margin-top:10px;">
-            <span>Votre Gain Potentiel (Net) :</span>
-            <span id="netGain" class="green-text">+0 €/mois</span>
-        </div>
-        <div class="stat-box">
-            <span>Commission Plateforme (15%) :</span>
-            <span id="commission">0 €</span>
+        <!-- SECTION PAIEMENT STROKE -->
+        <div id="payButtonContainer" class="pay-section">
+            <h3 style="color:#d32f2f;">💰 Votre Potentiel de Gain Identifié</h3>
+            <p>Pour obtenir le rapport détaillé et le plan d'action complet :</p>
+            <button id="payNowBtn" class="btn-primary-large" style="background:#d32f2f;">
+                Payer 9€ - Recevoir Mon Rapport Complet
+            </button>
         </div>
 
-        <h4>Détails des fuites :</h4>
-        <div id="itemsList"></div>
-
-        <!-- ZONE DU BOUTON PAIEMENT -->
-        <div id="paymentZone" style="display:none; text-align:center; margin-top:20px;">
-             <hr style="border-top: 1px dashed #ccc; margin-bottom: 20px;">
-             <h4 style="color:#e74c3c;">💎 Débloquez votre plan d'action complet</h4>
-             <p style="font-size:14px; color:#666;">Recevez un guide PDF détaillé étape par étape pour résilier chaque abonnement détecté.</p>
-             <button onclick="processPayment()" class="pay-now-btn" id="payBtn">
-                 PAYER 9€ POUR L'AUDIT COMPLET
-             </button>
-             <p style="font-size:11px; color:#999; margin-top:10px;">Paiement sécurisé via Stripe. Garantie satisfait ou remboursé 7 jours.</p>
+        <div class="footer-note">
+            * La saisie manuelle reste possible si vous n'avez pas de fichier numérique.<br>
+            Vos données sont traitées localement puis supprimées après analyse.
         </div>
-
-        <p style="font-size:12px; color:#aaa; text-align:center; margin-top:20px;">Signature cryptographique vérifiée ✅</p>
     </div>
 </div>
 
 <script>
-    // --- DÉTECTION AUTOMATIQUE DU STATUT PAIEMENT AU CHARGEMENT ---
-    window.addEventListener('DOMContentLoaded', () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const status = urlParams.get('status');
-        const uid = urlParams.get('uid'); // Récupère l'UID passé par Stripe
+// Gestion logique d'upload côté client
+const inputElement = document.getElementById('bankStatementInput');
+const fileNameDisplay = document.getElementById('fileNameDisplay');
+const startBtn = document.getElementById('startAnalysisBtn');
+const resultsArea = document.getElementById('resultsArea');
+const paySection = document.getElementById('payButtonContainer');
+const payNowBtn = document.getElementById('payNowBtn');
+
+let currentUid = null; // Stocke l'ID utilisateur temporaire
+
+inputElement.addEventListener('change', function() {
+    if(this.files.length > 0) {
+        fileNameDisplay.textContent = `✅ Fichier sélectionné : ${this.files[0].name}`;
+        startBtn.disabled = false;
+        startBtn.classList.add('active');
+        // Reset previous results
+        resultsArea.innerHTML = '';
+        paySection.style.display = 'none';
+    } else {
+        fileNameDisplay.textContent = "";
+        startBtn.disabled = true;
+    }
+});
+
+startBtn.addEventListener('click', async function() {
+    const file = inputElement.files[0];
+    if(!file) return alert("Veuillez choisir un fichier.");
+    
+    this.innerText = "<span class='spinner'></span> Analyse en cours...";
+    this.disabled = true;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch('/analyze', { method: 'POST', body: formData });
+        const data = await response.json();
         
-        if (status === 'paid') {
-            document.getElementById('successBanner').style.display = 'block';
+        if(data.status === 'success') {
+            // Stocker l'UID pour le paiement Stripe ensuite
+            currentUid = data.temp_user_id;
+            sessionStorage.setItem('audit_uid', currentUid);
             
-            // Stocke l'UID globalement pour que le bouton puisse l'utiliser
-            window.currentPaidUid = uid || sessionStorage.getItem('sentinel_last_uid');
+            // Afficher résumé rapide avant paiement
+            showQuickSummary(data.data.analysis_summary); 
+            
+            // Activer bouton Payer 9€
+            paySection.style.display = 'block';
+        } else {
+            alert("Erreur : " + data.error);
         }
-    });
-
-    // --- FONCTION DE GÉNÉRATION PDF CÔTÉ CLIENT (RAPIDE & SANS TIMEOUT) ---
-    async function generateAndDownloadPdf() {
-        const uid = window.currentPaidUid;
-        if (!uid) {
-            alert("Erreur : Identifiant manquant.");
-            return;
-        }
-
-        try {
-            // 1. Récupère les données brutes depuis notre nouvelle route rapide /get-report-data
-            const response = await fetch(`/get-report-data/${uid}`);
-            if (!response.ok) throw new Error("Données indisponibles");
-            
-            const result = await response.json();
-            const reportData = result.data;
-
-            // 2. Utilise jsPDF pour créer le document localement dans le navigateur
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            // En-tête Vert
-            doc.setFillColor(22, 163, 74);
-            doc.rect(0, 0, 210, 30, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(20);
-            doc.text("AGENT SENTINEL", 105, 15, null, null, "center");
-            doc.setFontSize(12);
-            doc.text("Rapport Audit Financier Personnalisé", 105, 22, null, null, "center");
-
-            // Date
-            doc.setTextColor(50, 50, 50);
-            doc.setFontSize(10);
-            doc.text(`Date generation : ${new Date().toLocaleDateString('fr-FR')}`, 15, 40);
-
-            // Synthèse Globale
-            doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
-            doc.text("Synthese Globale", 15, 50);
-            doc.line(15, 52, 195, 52);
-            
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'normal');
-            let yPos = 60;
-            const summary = reportData.analysis_summary;
-            
-            doc.text(`Transactions scannees : ${summary.total_scanned_lines}`, 15, yPos); yPos += 8;
-            doc.text(`Abonnements detectes : ${summary.subscriptions_detected}`, 15, yPos); yPos += 8;
-            doc.text(`Perte mensuelle estimee : ${summary.monthly_loss_identified} EUR`, 15, yPos); yPos += 8;
-            doc.text(`Projection annuelle : ${summary.yearly_loss_projected} EUR`, 15, yPos); yPos += 15;
-
-            // Box Verte Gain
-            doc.setFillColor(232, 248, 245);
-            doc.rect(15, yPos, 180, 15, 'F');
-            doc.setTextColor(39, 174, 96);
-            doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
-            doc.text(`POTENTIEL NET MENSUEL : +${reportData.financial_action.client_savings_net_monthly} EUR`, 105, yPos + 10, null, null, "center");
-            doc.setTextColor(50, 50, 50);
-            yPos += 25;
-
-            // Détails Table
-            doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
-            doc.text("Detail des Abonnements Detectes", 15, yPos);
-            doc.line(15, yPos+2, 195, yPos+2);
-            yPos += 10;
-
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'bold');
-            doc.setFillColor(240, 240, 240);
-            doc.rect(15, yPos, 60, 8, 'F'); doc.text("Categorie", 17, yPos+6);
-            doc.rect(75, yPos, 60, 8, 'F'); doc.text("Montant / Mois", 77, yPos+6);
-            doc.rect(135, yPos, 60, 8, 'F'); doc.text("Reference Anonyme", 137, yPos+6);
-            yPos += 8;
-
-            doc.setFont(undefined, 'normal');
-            const items = reportData.detected_items_anonymized;
-            
-            if(items.length === 0) {
-                doc.text("Aucun abonnement suspect detecte.", 15, yPos+6);
-            } else {
-                items.forEach(item => {
-                    const catReadable = item.category_code.replace('_', ' ').toUpperCase();
-                    doc.text(catReadable.substring(0, 25), 17, yPos+6);
-                    doc.text(`${item.amount_monthly.toFixed(2)} EUR`, 77, yPos+6);
-                    doc.text(`#${item.ref_hash}`, 137, yPos+6);
-                    yPos += 8;
-                    
-                    // Gestion saut de page si nécessaire
-                    if(yPos > 270) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                });
-            }
-
-            // Pied de page
-            doc.setFontSize(8);
-            doc.setTextColor(150, 150, 150);
-            doc.text("Ce rapport est confidentiel et genere automatiquement par Agent Sentinel.", 105, 290, null, null, "center");
-
-            // Téléchargement final
-            doc.save(`Sentinel_Audit_${uid}.pdf`);
-
-        } catch (error) {
-            console.error(error);
-            alert("Impossible de générer le rapport : " + error.message);
-        }
+    } catch(err) {
+        console.error(err);
+        alert("Problème réseau. Réessayez.");
+    } finally {
+        this.innerText = "⚡ Lancer l'Analyse IA (Gratuit)";
+        this.disabled = false;
     }
+});
 
-    // --- FONCTION UTILITAIRE : RÉVEILLER LE SERVEUR RENDER ---
-    async function wakeUpServer() {
-        console.log("Attempting to wake up server...");
-        try {
-            const response = await fetch('/salt-edge/connect', { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: 'wake_up_check@sentinel.com' }),
-                signal: AbortSignal.timeout(10000)
-            });
-            
-            if (response.ok) return true;
-            else throw new Error("Error");
-        } catch (error) {
-            return false;
-        }
-    }
+function showQuickSummary(summary) {
+    let html = `<div class='summary-card'>
+        <h4>📊 Rapport Préliminaire Gratuit :</h4>
+        <p>Lignes scannées : <strong>${summary.total_scanned_lines}</strong></p>
+        <p>Abonnements détectés : <strong>${summary.subscriptions_detected}</strong></p>
+        <hr style="border:0; border-top:1px solid #ffe0b2; margin:10px 0;">
+        <p style="font-size:1.2em; margin:0;">Perte annuelle estimée : <span style='color:red;font-weight:bold;'>${summary.yearly_loss_projected} €</span></p>
+        <small style="display:block; margin-top:10px; color:#666;">Validez votre audit complet ci-dessous pour recevoir le détail ligne par ligne.</small>
+    </div>`;
+    resultsArea.innerHTML = html;
+}
 
-    // --- LOGIQUE SALT EDGE (SIMULATION LOCALE) ---
-    async function startSaltEdge() {
-        const btn = document.getElementById('connectBankBtn');
-        const statusDiv = document.getElementById('bankStatus');
-        const scanEffect = document.getElementById('scanEffect');
-        const resultDiv = document.getElementById('result');
-        const paymentZone = document.getElementById('paymentZone');
-        
-        btn.disabled = true;
-        btn.innerHTML = "⏳ Authentification sécurisée...";
-        statusDiv.style.display = "block";
-        statusDiv.innerText = "Connexion au flux bancaire chiffré...";
-        statusDiv.style.color = "#16a34a";
-        scanEffect.style.display = "block";
-        resultDiv.style.display = "none";
-        paymentZone.style.display = "none";
+// Bouton Paiement Stripe
+payNowBtn.addEventListener('click', async () => {
+    if(!currentUid) return alert("Erreur interne");
+    
+    // Demande email simple prompt pour l'instant (à améliorer avec modal plus tard)
+    const email = prompt("Entrez votre email pour recevoir la facture :", "");
+    if(!email || !email.includes('@')) return alert("Email invalide");
 
-        await wakeUpServer(); 
-
-        try {
-            const response = await fetch('/salt-edge/connect', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: "demo_user@sentinel.com" }) 
-            });
-
-            if (!response.ok) throw new Error("Erreur serveur");
-            
-            const data = await response.json();
-            
-            if(data.status === 'success' && data.data) {
-                statusDiv.innerText = "✅ Accès accordé. Analyse en cours...";
-                
-                // CRUCIAL : Sauvegarder l'ID temporaire reçu du backend
-                if(data.temp_user_id) {
-                    sessionStorage.setItem('sentinel_last_uid', data.temp_user_id);
-                }
-                
-                setTimeout(() => {
-                    renderResults(data.data);
-                    paymentZone.style.display = "block";
-                    
-                    scanEffect.style.display = "none";
-                    btn.disabled = false;
-                    btn.innerHTML = "<span>🔄 RECHARGER UNE AUTRE BANQUE</span>";
-                    statusDiv.style.display = "none";
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                    
-                }, 1500);
-                
-            } else {
-                throw new Error("Structure invalide");
-            }
-
-        } catch (error) {
-            console.error(error);
-            statusDiv.innerHTML = "❌ Erreur technique.";
-            statusDiv.style.color = "#dc2626";
-            btn.disabled = false;
-            btn.innerHTML = "<span>🏦 RÉESSAYER</span>";
-            scanEffect.style.display = "none";
-        }
-    }
-
-    // --- LOGIQUE DE PAIEMENT STRIPE ---
-    async function processPayment() {
-        const btn = document.getElementById('payBtn');
-        const originalText = btn.innerText;
-        
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-small"></span>Réveil...';
-
-        let attempts = 0;
-        let success = false;
-
-        while(attempts < 3 && !success) {
-            success = await wakeUpServer();
-            if(!success) {
-                attempts++;
-                await new Promise(r => setTimeout(r, 2000));
-            }
-        }
-
-        if(!success) {
-             alert("Serveur hors ligne.");
-             btn.disabled = false;
-             btn.innerText = originalText;
-             return;
-        }
-
-        btn.innerHTML = '<span class="spinner-small"></span>Stripe...';
-
-        try {
-            const currentUid = sessionStorage.getItem('sentinel_last_uid') || "fallback_" + Date.now();
-
-            const response = await fetch('/create-checkout-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    email: "client@" + Date.now() + ".com",
-                    temp_user_id: currentUid 
-                }) 
-            });
-
-            if (!response.ok) throw new Error("Erreur session");
-            
-            const data = await response.json();
-            
-            if(data.url) {
-                window.location.href = data.url; 
-            } else {
-                throw new Error("URL manquante");
-            }
-
-        } catch (error) {
-            console.error(error);
-            alert("Erreur paiement : " + error.message);
-            btn.disabled = false;
-            btn.innerText = originalText;
-        }
-    }
-
-    // --- LOGIQUE ANALYSE MANUELLE ---
-    const API_URL = "/analyze"; 
-
-    async function sendToAI() {
-        const inputText = document.getElementById('csvInput').value.trim();
-        if (!inputText) return alert("Veuillez coller des données !");
-
-        const btn = document.getElementById('analyzeBtn');
-        const loader = document.getElementById('loader');
-        const resultDiv = document.getElementById('result');
-        const paymentZone = document.getElementById('paymentZone');
-
-        btn.disabled = true;
-        btn.innerText = "Analyse...";
-        loader.style.display = "block";
-        resultDiv.style.display = "none";
-        paymentZone.style.display = "none";
-
-        await wakeUpServer();
-
-        try {
-            let lines = inputText.split('\n');
-            let transactions = [];
-
-            lines.forEach(line => {
-                let parts = line.split(',');
-                if(parts.length >= 2) {
-                    transactions.push({
-                        date: new Date().toISOString().split('T')[0],
-                        label: parts[0].trim(),
-                        amount: parseFloat(parts[1]) || 0
-                    });
-                }
-            });
-
-            if(transactions.length === 0) throw new Error("Aucune transaction valide.");
-
-            const payload = { user_id: "WEB_USER_" + Math.floor(Math.random()*1000), transactions: transactions };
-
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) throw new Error(`Erreur: ${response.status}`);
-
-            const data = await response.json();
-            
-            if(data.temp_user_id) {
-                sessionStorage.setItem('sentinel_last_uid', data.temp_user_id);
-            }
-
-            renderResults(data.data);
-            paymentZone.style.display = "block";
-
-        } catch (error) {
-            console.error(error);
-            alert("Impossible de contacter le serveur.");
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "⚡ ANALYSER MES COMPTES";
-            loader.style.display = "none";
-        }
-    }
-
-    function renderResults(reportData) {
-        const resDiv = document.getElementById('result');
-        resDiv.style.display = "block";
-
-        document.getElementById('totalLines').innerText = reportData.analysis_summary.total_scanned_lines + " lignes";
-        document.getElementById('subsCount').innerText = reportData.analysis_summary.subscriptions_detected;
-        document.getElementById('monthlyLoss').innerText = reportData.analysis_summary.monthly_loss_identified.toFixed(2) + " €";
-        document.getElementById('netGain').innerText = "+" + reportData.financial_action.client_savings_net_monthly.toFixed(2) + " €/mois";
-        document.getElementById('commission').innerText = reportData.financial_action.platform_revenue_gross.toFixed(2) + " €";
-
-        const listContainer = document.getElementById('itemsList');
-        listContainer.innerHTML = ""; 
-
-        reportData.detected_items_anonymized.forEach(item => {
-            const card = document.createElement('div');
-            card.className = "card";
-            card.innerHTML = `
-                <strong>${item.category_code}</strong><br>
-                Montant : ${item.amount_monthly.toFixed(2)} €/mois<br>
-                Ref Hash : <code>${item.ref_hash}</code>
-            `;
-            listContainer.appendChild(card);
+    try {
+        const res = await fetch('/create-checkout-session', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email: email, temp_user_id: currentUid })
         });
+        const data = await res.json();
+        if(data.url) window.location.href = data.url;
+        else alert("Erreur Stripe: " + data.error);
+    } catch(e) {
+        alert("Erreur connexion serveur");
     }
+});
 </script>
 
 </body>
