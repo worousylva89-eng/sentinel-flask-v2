@@ -144,22 +144,22 @@ function showSuccessScreen() {
         token = params.get('token');
     }
 
-    // Construction du lien final avec le token inclus pour la robustesse
-    const reportLink = `/final-report/${uid}${token ? '?token=' + encodeURIComponent(token) : ''}`;
+    // ✅ MODIFICATION CRUCIALE : Lien vers /download-report au lieu de /final-report
+    const reportLink = `/download-report/${uid}${token ? '?token=' + encodeURIComponent(token) : ''}`;
 
     successView.innerHTML = `
         <div class="success-container">
             <span class="success-icon">✅</span>
             <h2 class="success-title">Paiement Reçu !</h2>
-            <p class="success-desc">Merci ! Votre transaction est validée.<br>Votre rapport détaillé est prêt.</p>
+            <p class="success-desc">Merci ! Votre transaction est validée.<br>Votre rapport PDF est prêt à être téléchargé.</p>
             
-            <!-- LIEN DIRECT VERS LE RAPPORT AUTO-GÉNÉRÉ AVEC TOKEN -->
-            <a href="${reportLink}" target="_blank" class="btn-primary-large" style="display:block; text-decoration:none; background:#d32f2f; margin-top:15px; font-size:1.2em; padding:20px;">
-                📄 VOIR MON RAPPORT COMPLET MAINTENANT
+            <!-- LIEN DE TÉLÉCHARGEMENT DIRECT -->
+            <a href="${reportLink}" class="btn-primary-large" style="display:block; text-decoration:none; background:#d32f2f; margin-top:15px; font-size:1.2em; padding:20px;">
+                📥 TÉLÉCHARGER MON RAPPORT PDF
             </a>
             
             <small style="display:block; margin-top:15px; color:#666;">
-                * Le rapport s'ouvrira dans un nouvel onglet. Vous pourrez l'imprimer ou le sauvegarder en PDF.
+                * Le fichier s'enregistrera automatiquement dans votre dossier "Téléchargements".
             </small>
 
             <button onclick="location.href='/'" class="btn-reset" style="margin-top:20px;">
