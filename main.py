@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, send_from_directory, redirect
+from flask import Flask, request, jsonify, send_from_directory, redirect, make_response
 import requests
 import json
 import random
@@ -9,6 +9,7 @@ import io
 import base64
 from datetime import datetime, timedelta
 import stripe
+from fpdf import FPDF # Importation de la lib PDF
 
 # --- CONFIGURATION ENVIRONNEMENT ---
 load_dotenv()
@@ -101,13 +102,9 @@ def analyze_upload():
 
         result_data = perform_analysis(transactions)
         
-        # Génération d'un ID unique court
         user_id = "guest_" + str(random.randint(100000,999999))
-        
-        # Sauvegarde locale (au cas où)
         last_analyses_store[user_id] = result_data
         
-        # ENCODAGE BASE64 POUR L'URL (LA CLÉ DU SUCCÈS)
         data_json = json.dumps(result_data)
         encoded_token = base64.urlsafe_b64encode(data_json.encode()).decode()
         
@@ -158,19 +155,112 @@ def create_checkout_session():
         return jsonify({"error": str(e)}), 500
 
 # ==========================================
-# GÉNÉRATEUR DE RAPPORT FINAL INSTANTANÉ (VERSION CORRECTE PDF)
+# GÉNÉRATEUR DE RAPPORT PDF NATIF (DOWNLOAD DIRECT)
 # ==========================================
-@app.route('/final-report/<uid>', methods=['GET'])
-def serve_final_report(uid):
-    """Génère le rapport soit depuis la mémoire, soit depuis le token URL."""
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 15)
+        self.cell(0, 10, 'RAPPORT D\'AUDIT FINANCIER SENTINEL', ln=True, align='C')
+        self.ln(5)
+        self.set_draw_color(26, 35, 126) # Bleu foncé
+        self.line(10, self.get_y(), 200, self.get_y())
+        self.ln(5)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.set_text_color(128)
+        self.cell(0, 10, f'Sentinel Finance © {datetime.now().year} | Page {self.page_no()}/{{nb}}', align='C')
+
+def generate_pdf_report(uid, analysis_data):
+    pdf = PDF()
+    pdf.alias_nb_pages()
+    pdf.add_page()
+    
+    summary = analysis_data['analysis_summary']
+    financial_action = analysis_data['financial_action']
+    detected_items = analysis_data['detected_items_anonymized']
+
+    # Infos Client & Date
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(100)
+    pdf.cell(0, 8, f'ID Client : {uid}', ln=True)
+    pdf.cell(0, 8, f'Date d\'analyse : {datetime.now().strftime("%d/%m/%Y")}', ln=True)
+    pdf.ln(5)
+
+    # Alerte Critique Box
+    pdf.set_fill_color(255, 243, 224) # Orange clair bg
+    pdf.set_text_color(230, 81, 0) # Texte orange foncé
+    pdf.rect(10, pdf.get_y(), 190, 35, style='F')
+    pdf.set_xy(15, pdf.get_y() + 5)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.multi_cell(0, 6, f'⚠️ ALERTE CRITIQUE DÉTECTÉE\nNous avons identifié {summary["subscriptions_detected"]} abonnements récurrents non essentiels.\nPerte mensuelle estimée : {summary["monthly_loss_identified"]} €\nPerte annuelle projetée : {summary["yearly_loss_projected"]} €')
+    
+    pdf.set_xy(10, pdf.get_y() + 10)
+    pdf.set_text_color(0)
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, 'Détail des Pertes Identifiées', ln=True)
+    pdf.ln(2)
+
+    # Tableau HTML-like simulé avec cells
+    col_widths = [80, 55, 55]
+    headers = ['Catégorie', 'Coût Mensuel', 'Impact Annuel']
+    
+    # Header Row
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_fill_color(26, 35, 126)
+    pdf.set_text_color(255)
+    for i, h in enumerate(headers):
+        pdf.cell(col_widths[i], 8, h, border=1, fill=True, align='C' if i > 0 else 'L')
+    pdf.ln()
+
+    # Data Rows
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0)
+    for idx, item in enumerate(detected_items):
+        cat_name = item['category_code'].replace('_', ' ').title()
+        monthly_cost = f"-{item['amount_monthly']} €"
+        yearly_impact = f"≈ {round(item['amount_monthly']*12, 2)} €"
+        
+        if idx % 2 == 0:
+            pdf.set_fill_color(245, 245, 245) # Zebra striping light gray
+            fill_style = True
+        else:
+            fill_style = False
+            
+        pdf.cell(col_widths[0], 8, cat_name, border=1, fill=fill_style)
+        pdf.cell(col_widths[1], 8, monthly_cost, border=1, fill=fill_style, align='R')
+        pdf.cell(col_widths[2], 8, yearly_impact, border=1, fill=fill_style, align='R')
+        pdf.ln()
+
+    # Total Line
+    pdf.set_font('Arial', 'B', 11)
+    pdf.set_text_color(211, 47, 47) # Rouge alerte
+    pdf.cell(sum(col_widths[:-1]), 8, 'TOTAL PERDU PAR AN :', border=1, align='R')
+    pdf.cell(col_widths[-1], 8, f'{summary["yearly_loss_projected"]} €', border=1, align='R')
+    pdf.ln(10)
+
+    # Plan d'action
+    pdf.set_text_color(0)
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, '💰 Plan d\'Action & Gain Potentiel', ln=True)
+    pdf.ln(2)
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 7, f'En résiliant ces services superflus, vous récupérerez immédiatement :\n• + {financial_action["client_savings_net_monthly"]} € nets par mois dans votre poche.\n• Frais de service Sentinel appliqués ({int(financial_action["service_fee_rate"]*100)}%) : {financial_action["platform_revenue_gross"]} €/mois.')
+
+    return pdf.output(dest='S').encode('latin-1')
+
+
+@app.route('/download-report/<uid>', methods=['GET'])
+def download_report_pdf(uid):
+    """Génère le PDF et force le téléchargement."""
     
     analysis_data = None
     
-    # 1. Essayer de trouver dans la mémoire vive (rapide)
+    # Récupération données (Mémoire ou Token URL)
     if uid in last_analyses_store:
         analysis_data = last_analyses_store[uid]
     else:
-        # 2. Sinon, essayer de décoder le token passé dans l'URL (?token=...)
         token_param = request.args.get('token')
         if token_param:
             try:
@@ -179,119 +269,31 @@ def serve_final_report(uid):
             except Exception as decode_err:
                 print(f"Erreur décodage token: {decode_err}")
 
-    # Si toujours rien -> Erreur propre
     if not analysis_data:
-        return f"""
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head><title>Rapport Indisponible</title></head>
-        <body style="font-family:sans-serif; text-align:center; padding:50px;">
-            <h2 style="color:#d32f2f;">⚠️ Session Expirée</h2>
-            <p>Votre session d'analyse a expiré pendant le traitement du paiement.</p>
-            <br>
-            <a href="/" style="background:#1a237e; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Retourner à l'accueil</a>
-        </body>
-        </html>
-        """, 404
-        
-    summary = analysis_data['analysis_summary']
-    financial_action = analysis_data['financial_action']
-    detected_items = analysis_data['detected_items_anonymized']
-    
-    items_html = ""
-    for item in detected_items:
-        items_html += f"""
-        <tr style="border-bottom:1px solid #eee;">
-            <td style="padding:12px; font-weight:bold; color:#d32f2f;">{item['category_code'].replace('_', ' ').title()}</td>
-            <td style="padding:12px; text-align:right; font-size:1.1em;">-{item['amount_monthly']} € / mois</td>
-            <td style="padding:12px; text-align:right; color:#666;">≈ {round(item['amount_monthly']*12, 2)} € / an</td>
-        </tr>
-        """
-        
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <title>Rapport Audit Sentinel - {uid}</title>
-        <style>
-            body {{ font-family: 'Segoe UI', sans-serif; background:#f9f9f9; padding:40px; color:#333; }}
-            .container {{ max-width:800px; margin:auto; background:white; padding:40px; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.1); }}
-            h1 {{ color:#1a237e; border-bottom:3px solid #ff9800; padding-bottom:15px; }}
-            .alert-box {{ background:#fff3e0; border-left:5px solid #ff9800; padding:20px; margin:25px 0; border-radius:4px; }}
-            table {{ width:100%; border-collapse:collapse; margin-top:20px; }}
-            th {{ background:#1a237e; color:white; padding:15px; text-align:left; }}
-            tr:nth-child(even) {{ background:#f5f5f5; }}
-            .total-row td {{ font-weight:bold; font-size:1.2em; color:#d32f2f; border-top:2px solid #ddd; }}
-            
-            /* ✅ FIX CRUCIAL : Lien au lieu de Bouton pour compatibilité Mobile PDF */
-            .print-link {{ 
-                display:inline-block; 
-                background:#2e7d32; 
-                color:white; 
-                padding:15px 30px; 
-                text-decoration:none; 
-                border-radius:6px; 
-                font-weight:bold; 
-                margin-top:30px; 
-                cursor:pointer; 
-                font-size:1em;
-                transition: all 0.2s ease;
-            }}
-            .print-link:hover {{ background:#1b5e20; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }}
-            
-            @media print {{ .no-print {{ display:none !important; }} body {{ padding:0; }} .container {{ box-shadow:none; }} }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🛡️ RAPPORT D'AUDIT FINANCIER SENTINEL</h1>
-            <p><strong>ID Client :</strong> {uid} | <strong>Date :</strong> {datetime.now().strftime('%d/%m/%Y')}</p>
-            
-            <div class="alert-box">
-                <h3 style="margin-top:0; color:#e65100;">⚠️ ALERTE CRITIQUE DÉTECTÉE</h3>
-                <p>Nous avons identifié <strong>{summary['subscriptions_detected']}</strong> abonnements récurrents non essentiels sur vos relevés analysés.</p>
-                <p>Cela représente une fuite mensuelle estimée à <strong>{summary['monthly_loss_identified']} €</strong>.</p>
-                <p>Votre perte annuelle projetée s'élève à : <span style="font-size:1.5em; font-weight:bold; color:red;">{summary['yearly_loss_projected']} €</span></p>
-            </div>
+        return "<h2>❌ Erreur : Données introuvables.</h2><a href='/'>Retour Accueil</a>", 404
 
-            <h2>Détail des Pertes Identifiées</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Catégorie</th>
-                        <th style="text-align:right;">Coût Mensuel</th>
-                        <th style="text-align:right;">Impact Annuel</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items_html}
-                    <tr class="total-row">
-                        <td colspan="2" style="text-align:right;">TOTAL PERDU PAR AN :</td>
-                        <td style="text-align:right;">{summary['yearly_loss_projected']} €</td>
-                    </tr>
-                </tbody>
-            </table>
+    try:
+        pdf_binary = generate_pdf_report(uid, analysis_data)
+        
+        response = make_response(pdf_binary)
+        filename = f"Rapport_Sentinel_{uid}.pdf"
+        
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
 
-            <h2>💰 Plan d'Action & Gain Potentiel</h2>
-            <p>En résiliant ces services superflus, vous récupérerez immédiatement :</p>
-            <ul style="line-height:1.8; font-size:1.1em;">
-                <li><strong>+ {financial_action['client_savings_net_monthly']} €</strong> nets par mois dans votre poche.</li>
-                <li>Frais de service Sentinel appliqués ({int(financial_action['service_fee_rate']*100)}%) : {financial_action['platform_revenue_gross']} €/mois.</li>
-                <li>Économies brutes réalisées avant frais : {summary['monthly_loss_identified']} €/mois.</li>
-            </ul>
-            
-            <!-- ✅ LE LIEN MAGIQUE QUI FONCTIONNE PARTOUT -->
-            <a href="#" onclick="window.print(); return false;" class="print-link no-print">
-                🖨️ Imprimer / Sauvegarder en PDF
-            </a>
-            <br><br>
-            <a href="/" class="no-print" style="color:#666; text-decoration:none;">← Retour à l'accueil Sentinel Finance</a>
-        </div>
-    </body>
-    </html>
-    """
-    return html_content
+    except Exception as e:
+        print(f"Erreur génération PDF: {str(e)}")
+        return f"<h2>💥 Crash Serveur PDF: {str(e)}</h2>", 500
+
+# Ancienne route conservée juste au cas où, mais on utilise maintenant /download-report
+@app.route('/final-report/<uid>', methods=['GET'])
+def serve_final_report_redirect(uid):
+    # Redirection simple vers la nouvelle route propre
+    token = request.args.get('token', '')
+    query_string = f"?token={token}" if token else ""
+    return redirect(f"/download-report/{uid}{query_string}")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
