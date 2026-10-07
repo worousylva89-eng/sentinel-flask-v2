@@ -11,20 +11,38 @@
         .header h1 { margin: 0; font-size: 1.8em; letter-spacing: 1px; }
         .header p { margin: 10px 0 0; opacity: 0.9; font-size: 0.95em; }
         .content { padding: 30px; }
+        
+        /* Styles Zone Upload */
         .premium-upload-box { background: #e8f5e9; border: 2px dashed #4caf50; border-radius: 8px; padding: 25px; text-align: center; transition: all 0.3s ease; cursor: pointer; position: relative; }
         .premium-upload-box:hover { background: #c8e6c9; transform: translateY(-2px); }
         .btn-primary-large { background: #2e7d32; color: white; border: none; padding: 15px 30px; font-size: 1.1em; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; width: 100%; transition: background 0.2s; }
         .btn-primary-large:hover { background: #1b5e20; }
-        .btn-secondary-large { background: #ff9800; color: white; border: none; padding: 12px 25px; font-size: 1em; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; width: 100%; transition: background 0.2s; opacity: 0.5; cursor: not-allowed; }
+        
+        /* Séparateur OU */
+        .separator-or { display: flex; align-items: center; margin: 25px 0; color: #999; font-size: 0.9em; font-weight: bold; }
+        .separator-or::before, .separator-or::after { content: ""; flex: 1; border-bottom: 1px solid #ddd; }
+        .separator-or span { padding: 0 15px; }
+
+        /* Styles Saisie Manuelle */
+        .manual-input-area textarea { width: 100%; height: 120px; padding: 12px; border: 1px solid #ccc; border-radius: 6px; resize: vertical; font-family: monospace; font-size: 0.9em; box-sizing: border-box; }
+        .manual-hint { font-size: 0.8em; color: #666; margin-top: 5px; line-height: 1.4; }
+        
+        /* Boutons Actions */
+        .action-buttons { display: grid; gap: 10px; margin-top: 20px; }
+        .btn-secondary-large { background: #ff9800; color: white; border: none; padding: 12px 25px; font-size: 1em; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; opacity: 0.5; cursor: not-allowed; }
         .btn-secondary-large.active { opacity: 1; cursor: pointer; }
         .btn-secondary-large.active:hover { background: #f57c00; }
+        
         #fileNameDisplay { margin-top: 10px; color: #2e7d32; font-size: 0.9em; font-weight: bold; }
-        .summary-card { background: #fff3e0; border-left: 4px solid #ff9800; padding: 20px; margin-top: 20px; border-radius: 4px; text-align: left; }
+        .summary-card { background: #fff3e0; border-left: 4px solid #ff9800; padding: 20px; margin-top: 20px; border-radius: 4px; text-align: left; animation: fadeIn 0.5s; }
         .summary-card h4 { margin: 0 0 10px; color: #e65100; }
         .summary-card p { margin: 5px 0; font-size: 0.95em; }
-        .pay-section { margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; display: none; } /* Caché au début */
+        .pay-section { margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; display: none; animation: slideUp 0.5s; }
         .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; vertical-align: middle; margin-right: 10px; }
+        
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .footer-note { font-size: 0.8em; color: #888; margin-top: 20px; text-align: center; }
     </style>
 </head>
@@ -37,21 +55,31 @@
     </div>
 
     <div class="content">
-        <!-- ZONE D'UPLOAD PREMIUM -->
+        <!-- OPTION 1 : UPLOAD FICHIER -->
         <div class="premium-upload-box" onclick="document.getElementById('bankStatementInput').click()">
-            <h3 style="margin:0 0 10px; color:#1b5e20;">🔒 Audit Sécurisé & Confidentiel</h3>
-            <p style="font-size:0.9em; margin-bottom:15px;">Téléchargez votre relevé bancaire récent (format CSV recommandé).<br>Nos algorithmes détectent automatiquement vos pertes mensuelles.</p>
+            <h3 style="margin:0 0 10px; color:#1b5e20;">🚀 Méthode Rapide (Recommandée)</h3>
+            <p style="font-size:0.9em; margin-bottom:15px;">Téléchargez votre relevé bancaire (.CSV).</p>
             
-            <!-- Input caché mais déclenché par le clic sur la boîte -->
             <input type="file" id="bankStatementInput" accept=".csv,.txt" style="display:none;">
-            
-            <button class="btn-primary-large" type="button">📂 Choisir mon Relevé Bancaire</button>
+            <button class="btn-primary-large" type="button">📂 Choisir mon Fichier CSV</button>
             <div id="fileNameDisplay"></div>
         </div>
 
-        <button id="startAnalysisBtn" disabled class="btn-secondary-large">
-            ⚡ Lancer l'Analyse IA (Gratuit)
-        </button>
+        <!-- SÉPARATEUR VISUEL -->
+        <div class="separator-or"><span>OÙ SAISIE MANUELLE</span></div>
+
+        <!-- OPTION 2 : SAISIE MANUELLE (Texte Brut) -->
+        <div class="manual-input-area">
+            <textarea id="manualDataInput" placeholder="Collez ici vos transactions brutes...&#10;&#10;Exemple :&#10;NETFLIX PREMIUM,-17.99&#10;CARREFOUR MARKET,-50.00&#10;SPOTIFY FAMILY,-14.99"></textarea>
+            <div class="manual-hint">💡 Format attendu : Libellé,Montant (une ligne par transaction).</div>
+        </div>
+
+        <!-- BOUTONS D'ACTION -->
+        <div class="action-buttons">
+            <button id="startAnalysisBtn" disabled class="btn-secondary-large active" style="opacity:1; cursor:pointer;">
+                ⚡ Lancer l'Analyse IA (Gratuit)
+            </button>
+        </div>
 
         <!-- AFFICHAGE DU RÉSULTAT PRÉLIMINAIRE -->
         <div id="resultsArea"></div>
@@ -66,60 +94,92 @@
         </div>
 
         <div class="footer-note">
-            * La saisie manuelle reste possible si vous n'avez pas de fichier numérique.<br>
-            Vos données sont traitées localement puis supprimées après analyse.
+            Vos données sont traitées localement puis supprimées après analyse. Confidentialité garantie.
         </div>
     </div>
 </div>
 
 <script>
-// Gestion logique d'upload côté client
+// Gestion logique combinée (Upload + Manuel)
 const inputElement = document.getElementById('bankStatementInput');
 const fileNameDisplay = document.getElementById('fileNameDisplay');
+const manualTextarea = document.getElementById('manualDataInput');
 const startBtn = document.getElementById('startAnalysisBtn');
 const resultsArea = document.getElementById('resultsArea');
 const paySection = document.getElementById('payButtonContainer');
 const payNowBtn = document.getElementById('payNowBtn');
 
-let currentUid = null; // Stocke l'ID utilisateur temporaire
+let currentUid = null; 
+let dataSource = null; // 'file' ou 'manual'
 
+// Activation/Désactivation du bouton selon ce qui est rempli
+function checkReadyState() {
+    const hasFile = inputElement.files.length > 0;
+    const hasManualText = manualTextarea.value.trim().length > 0;
+    
+    if(hasFile || hasManualText) {
+        startBtn.disabled = false;
+        startBtn.classList.add('active');
+    } else {
+        startBtn.disabled = true;
+        startBtn.classList.remove('active');
+    }
+}
+
+// Écouteurs événements
 inputElement.addEventListener('change', function() {
     if(this.files.length > 0) {
         fileNameDisplay.textContent = `✅ Fichier sélectionné : ${this.files[0].name}`;
-        startBtn.disabled = false;
-        startBtn.classList.add('active');
-        // Reset previous results
-        resultsArea.innerHTML = '';
-        paySection.style.display = 'none';
+        manualTextarea.value = ''; // Vide le manuel si on choisit un fichier
+        dataSource = 'file';
     } else {
         fileNameDisplay.textContent = "";
-        startBtn.disabled = true;
     }
+    checkReadyState();
 });
 
+manualTextarea.addEventListener('input', function() {
+    if(this.value.trim().length > 0) {
+        inputElement.value = ''; // Désélectionne le fichier si on tape du texte
+        fileNameDisplay.textContent = "";
+        dataSource = 'manual';
+    }
+    checkReadyState();
+});
+
+// Logique de lancement Analyse
 startBtn.addEventListener('click', async function() {
-    const file = inputElement.files[0];
-    if(!file) return alert("Veuillez choisir un fichier.");
-    
     this.innerText = "<span class='spinner'></span> Analyse en cours...";
     this.disabled = true;
     
-    const formData = new FormData();
-    formData.append('file', file);
-    
     try {
-        const response = await fetch('/analyze', { method: 'POST', body: formData });
+        let response;
+        
+        if(dataSource === 'file') {
+            // Envoi Form Data (Fichier)
+            const formData = new FormData();
+            formData.append('file', inputElement.files[0]);
+            response = await fetch('/analyze', { method: 'POST', body: formData });
+        } 
+        else if(dataSource === 'manual') {
+            // Envoi JSON (Texte parse côté serveur aussi possible, mais ici on simule l'envoi brut)
+            // NOTE: Ton backend actuel attend un fichier. On va adapter légèrement le frontend 
+            // pour envoyer le texte comme si c'était un fichier blob, OU modifier le backend.
+            // Solution rapide Frontend : Créer un Blob à partir du texte.
+            const blob = new Blob([manualTextarea.value], { type: 'text/csv' });
+            const fileObj = new File([blob], "manuel.csv", { type: "text/csv" });
+            
+            const formData = new FormData();
+            formData.append('file', fileObj);
+            response = await fetch('/analyze', { method: 'POST', body: formData });
+        }
+
         const data = await response.json();
         
         if(data.status === 'success') {
-            // Stocker l'UID pour le paiement Stripe ensuite
             currentUid = data.temp_user_id;
             sessionStorage.setItem('audit_uid', currentUid);
-            
-            // Afficher résumé rapide avant paiement
             showQuickSummary(data.data.analysis_summary); 
-            
-            // Activer bouton Payer 9€
             paySection.style.display = 'block';
         } else {
             alert("Erreur : " + data.error);
@@ -130,6 +190,7 @@ startBtn.addEventListener('click', async function() {
     } finally {
         this.innerText = "⚡ Lancer l'Analyse IA (Gratuit)";
         this.disabled = false;
+        checkReadyState(); // Réévalue l'état
     }
 });
 
@@ -148,8 +209,6 @@ function showQuickSummary(summary) {
 // Bouton Paiement Stripe
 payNowBtn.addEventListener('click', async () => {
     if(!currentUid) return alert("Erreur interne");
-    
-    // Demande email simple prompt pour l'instant (à améliorer avec modal plus tard)
     const email = prompt("Entrez votre email pour recevoir la facture :", "");
     if(!email || !email.includes('@')) return alert("Email invalide");
 
