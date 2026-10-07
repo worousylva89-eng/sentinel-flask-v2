@@ -4,6 +4,8 @@ from flask import Flask, request, jsonify, send_from_directory, redirect
 import requests
 import json
 import random
+import csv
+import io
 from datetime import datetime, timedelta
 import stripe
 
@@ -14,11 +16,6 @@ load_dotenv()
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
-
-# Clés Salt Edge
-SE_LOGIN = os.getenv("SALTEDGE_CLIENT_ID")      
-SE_API_KEY = os.getenv("SALTEDGE_SECRET_KEY")   
-SE_BASE_URL = "https://api.saltedge.com/api/v4" 
 
 app = Flask(__name__, static_folder='.')
 
@@ -71,218 +68,58 @@ def perform_analysis(transactions_list):
         "detected_items_anonymized": detected
     }
 
-# --- GENERATEUR DE DONNEES FICTIVES (Fallback / Test Local) ---
-def generate_random_bank_transactions(count=8):
-    base_date = datetime.now() - timedelta(days=random.randint(1, 30))
-    
-    templates = [
-        {"label_template": "NETFLIX PREMIUM SUBSCRIPTION", "min_amt": 17.99, "max_amt": 19.99},
-        {"label_template": "SPOTIFY FAMILY PLAN", "min_amt": 14.99, "max_amt": 16.99},
-        {"label_template": "BASIC-FIT GYM MEMBERSHIP", "min_amt": 29.99, "max_amt": 34.99},
-        {"label_template": "AMAZON PRIME DELIVERY", "min_amt": 5.99, "max_amt": 7.99},
-        {"label_template": "CANAL+ SPORT STREAMING", "min_amt": 19.99, "max_amt": 24.99},
-        {"label_template": "CARREFOUR MARKET GROCERY", "min_amt": 40.00, "max_amt": 80.00}, 
-        {"label_template": "EDF ELECTRICITY BILL", "min_amt": 70.00, "max_amt": 100.00}, 
-        {"label_template": "SALARY TRANSFER INCOME", "min_amt": 2000.00, "max_amt": 3000.00} 
-    ]
-    
-    transactions = []
-    selected_templates = random.sample(templates, min(count, len(templates)))
-    
-    for i, tmpl in enumerate(selected_templates):
-        date_offset = i * random.randint(1, 5)
-        txn_date = (base_date + timedelta(days=date_offset)).strftime("%Y-%m-%d")
-        
-        variation = random.uniform(0.9, 1.1)
-        raw_amount = random.uniform(tmpl["min_amt"], tmpl["max_amt"]) * variation
-        
-        is_income = "INCOME" in tmpl["label_template"].upper()
-        final_amount = round(raw_amount, 2)
-        if not is_income:
-            final_amount = -final_amount
-            
-        transactions.append({
-            "date": txn_date,
-            "label": tmpl["label_template"],
-            "amount": final_amount
-        })
-        
-    return transactions
-
-# --- ROUTE API MANUELLE (CSV) ---
+# --- ROUTE API UPLOAD DE FICHIERS (CSV / TXT) ---
 @app.route('/analyze', methods=['POST'])
-def analyze_manual():
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No data"}), 400
-
-    transactions = data.get('transactions', [])
-    result_data = perform_analysis(transactions)
+def analyze_upload():
+    # Vérifie si un fichier a été envoyé via le champ 'file' du form-data
+    if 'file' not in request.files:
+        return jsonify({"error": "Aucun fichier reçu"}), 400
     
-    user_id = data.get('user_id', 'guest_' + str(random.randint(1000,9999)))
-    last_analyses_store[user_id] = result_data
-    
-    return jsonify({
-        "status": "success",
-        "message": "Analyse terminée.",
-        "data": result_data,
-        "signature": "SECURE_HASH_V2_UNIFIED",
-        "temp_user_id": user_id 
-    })
-
-# ==========================================
-# INTÉGRATION RÉELLE SALT EDGE (OPEN BANKING)
-# ==========================================
-
-def get_salt_edge_token():
-    """Récupère le token d'accès OAuth2 auprès de Salt Edge"""
-    if not SE_LOGIN or not SE_API_KEY:
-        print("⚠️ ERREUR: Variables SALTEDGE_CLIENT_ID ou SECRET_KEY manquantes.")
-        return None
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "Nom de fichier vide"}), 400
         
     try:
-        response = requests.post(
-            f"{SE_BASE_URL}/oauth/token",
-            data={"grant_type": "client_credentials"},
-            auth=(SE_LOGIN, SE_API_KEY)
-        )
-        if response.status_code == 200:
-            return response.json().get("access_token")
-        else:
-            print(f"❌ Échec authentification Salt Edge: {response.text}")
-            return None
-    except Exception as e:
-        print(f"💥 Exception connexion Salt Edge: {str(e)}")
-        return None
+        content = file.read().decode('utf-8')
+        transactions = []
+        
+        # Analyse basique CSV (Label, Amount) - Adaptable selon format banque
+        reader = csv.reader(io.StringIO(content))
+        next(reader, None) # Skip header si présent
+        
+        for row in reader:
+            if len(row) >= 2:
+                label = row[0].strip()
+                try:
+                    # Nettoie les montants (remplace virgule par point, retire espaces)
+                    amount_str = row[1].replace(',', '.').replace(' ', '').strip()
+                    amount = float(amount_str)
+                    transactions.append({
+                        "label": label,
+                        "amount": amount
+                    })
+                except ValueError:
+                    continue
+                    
+        if not transactions:
+             return jsonify({"error": "Format invalide ou données insuffisantes. Assurez-vous que c'est un CSV avec [Libellé, Montant]"}), 400
 
-@app.route('/salt-edge/connect', methods=['POST'])
-def connect_real_salt_edge():
-    """Initialise une connexion bancaire réelle via Salt Edge"""
-    token = get_salt_edge_token()
-    if not token:
-        # Fallback vers simulation si l'API échoue
-        print("🔄 Mode Simulation activé car Salt Edge indisponible.")
-        simulated_transactions = generate_random_bank_transactions(count=8)
-        analysis_result = perform_analysis(simulated_transactions)
-        temp_id = "sim_" + str(random.randint(100000, 999999))
-        last_analyses_store[temp_id] = analysis_result
+        result_data = perform_analysis(transactions)
+        
+        user_id = "guest_" + str(random.randint(1000,9999))
+        last_analyses_store[user_id] = result_data
+        
         return jsonify({
-            "status": "simulation_mode",
-            "message": "Salt Edge inaccessible, utilisation de données fictives.",
-            "data": analysis_result,
-            "temp_user_id": temp_id 
-        }), 200
+            "status": "success",
+            "message": "Analyse terminée.",
+            "data": result_data,
+            "signature": "SECURE_HASH_V2_UNIFIED",
+            "temp_user_id": user_id 
+        })
 
-    # ✅ CORRECTION 1 & 2 : Headers JSON:API et Structure Payload
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/vnd.api+json",
-        "Accept": "application/vnd.api+json"
-    }
-    
-    payload = {
-        "data": {
-            "type": "provider_connections",
-            "attributes": {
-                # ✅ CORRECTION 3 : L'ID officiel de démonstration
-                "provider_id": "demo-provider-connection", 
-                "return_url": request.url_root.rstrip('/') + "/salt-edge/callback",
-                "state": "unique_state_123"
-            }
-        }
-    }
-    
-    try:
-        resp = requests.post(f"{SE_BASE_URL}/provider_connections", json=payload, headers=headers)
-        
-        if resp.status_code == 201:
-            connection_data = resp.json()["data"]["attributes"]
-            redirect_url = connection_data["redirect_uri"]
-            
-            return jsonify({
-                "status": "success",
-                "source": "SALT_EDGE_LIVE",
-                "message": "Redirection vers la page de login bancaire...",
-                "redirect_url": redirect_url
-            })
-        else:
-            error_msg = resp.text
-            print(f"❌ Erreur création connexion Salt Edge: {error_msg}")
-            return jsonify({"error": "Échec création connexion", "details": error_msg}), 400
-            
     except Exception as e:
-        print(f"💥 Exception lors de la création de connexion: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-# --- CALLBACK SALT EDGE (Reçoit les données après login client) ---
-@app.route('/salt-edge/callback', methods=['GET'])
-def salt_edge_callback():
-    """Endpoint appelé par Salt Edge quand le client a validé sa connexion"""
-    state = request.args.get('state')
-    provider_connection_id = request.args.get('id') 
-    
-    if not provider_connection_id:
-        return "<h2>❌ Erreur: ID manquant</h2><a href='/'>Retour Accueil</a>"
-        
-    token = get_salt_edge_token()
-    if not token:
-         return "<h2>❌ Erreur: Impossible de récupérer le token.</h2>"
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.api+json"
-    }
-    
-    try:
-        # 1. Récupérer les comptes liés à cette connexion
-        accounts_resp = requests.get(
-            f"{SE_BASE_URL}/accounts?filter[provider_connection_id]={provider_connection_id}",
-            headers=headers
-        )
-        
-        if accounts_resp.status_code != 200:
-             return f"<h2>❌ Erreur récupération comptes: {accounts_resp.text}</h2>"
-             
-        accounts = accounts_resp.json().get("data", [])
-        if not accounts:
-            return "<h2>⚠️ Aucun compte trouvé.</h2>"
-            
-        account_id = accounts[0]["id"]
-        
-        # 2. Récupérer les transactions de ce compte
-        txns_resp = requests.get(
-            f"{SE_BASE_URL}/transactions?filter[account_id]={account_id}&limit=50",
-            headers=headers
-        )
-        
-        if txns_resp.status_code != 200:
-             return f"<h2>❌ Erreur récupération transactions: {txns_resp.text}</h2>"
-             
-        raw_txns = txns_resp.json().get("data", [])
-        
-        # Transformer les données Salt Edge au format attendu par notre analyseur
-        formatted_txns = []
-        for t in raw_txns:
-            attrs = t.get("attributes", {})
-            formatted_txns.append({
-                "date": attrs.get("booked_at", "")[:10],
-                "label": attrs.get("description", ""),
-                "amount": float(attrs.get("amount", 0))
-            })
-            
-        # 3. Analyser les vraies données !
-        analysis_result = perform_analysis(formatted_txns)
-        
-        # Stocker temporairement avec un ID unique basé sur le callback
-        temp_uid = "real_" + str(hash(provider_connection_id))[-6:]
-        last_analyses_store[temp_uid] = analysis_result
-        
-        # Rediriger vers le frontend avec l'UID pour afficher le rapport
-        return redirect(f"/?report_ready=true&uid={temp_uid}")
-        
-    except Exception as e:
-        print(f"Erreur critique Callback Salt Edge: {str(e)}")
-        return f"<h2>💥 Crash Serveur: {str(e)}</h2>"
+        print(f"Erreur analyse fichier: {str(e)}")
+        return jsonify({"error": f"Échec lecture fichier: {str(e)}"}), 500
 
 # --- INTÉGRATION STRIPE CHECKOUT ---
 @app.route('/create-checkout-session', methods=['POST'])
