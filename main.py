@@ -70,7 +70,7 @@ def perform_analysis(transactions_list):
         "detected_items_anonymized": detected
     }
 
-# --- ROUTE API UPLOAD DE FICHIERS (CSV / TXT) ---
+# --- ROUTE API UPLOAD DE FICHIERS (VERSION ULTRA-TOLÉRANTE) ---
 @app.route('/analyze', methods=['POST'])
 def analyze_upload():
     if 'file' not in request.files:
@@ -81,24 +81,52 @@ def analyze_upload():
         return jsonify({"error": "Nom de fichier vide"}), 400
         
     try:
+        # Lecture brute du contenu (ignore totalement l'extension .txt/.csv)
         content = file.read().decode('utf-8')
         transactions = []
         
+        # Utilisation de csv.reader qui gère nativement les virgules et guillemets
         reader = csv.reader(io.StringIO(content))
-        next(reader, None) 
         
+        lines_processed = 0
+        skipped_header = False
+
         for row in reader:
-            if len(row) >= 2:
-                label = row[0].strip()
-                try:
-                    amount_str = row[1].replace(',', '.').replace(' ', '').strip()
-                    amount = float(amount_str)
-                    transactions.append({"label": label, "amount": amount})
-                except ValueError:
-                    continue
+            if not row: continue # Ignore lignes vides
+            
+            # Détection intelligente du Header sur la PREMIERE ligne seulement
+            if lines_processed == 0 and not skipped_header:
+                first_cell = str(row[0]).upper()
+                if any(keyword in first_cell for keyword in ["LIBELLE", "LABEL", "DESCRIPTION", "DATE", "MONTANT", "AMOUNT"]):
+                    skipped_header = True
+                    continue # Saute cette ligne, c'était bien un titre
                     
+            # Traitement des données valides
+            if len(row) >= 2:
+                label = str(row[0]).strip()
+                raw_amount = str(row[1]).strip()
+                
+                try:
+                    # Nettoyage avancé : retire espaces, €, $, remplace , par .
+                    clean_amount = raw_amount.replace(',', '.').replace(' ', '').replace('€', '').replace('$', '')
+                    
+                    # Gestion des nombres négatifs entre parenthèses ex: "(50.00)" -> "-50.00"
+                    if clean_amount.startswith('(') and clean_amount.endswith(')'):
+                        clean_amount = '-' + clean_amount[1:-1]
+                        
+                    amount = float(clean_amount)
+                    
+                    # On ignore les montants égaux à 0 ou les libellés vides
+                    if amount != 0 and label:
+                        transactions.append({"label": label, "amount": amount})
+                        
+                except ValueError:
+                    continue # Si la conversion échoue, on passe à la ligne suivante silencieusement
+                    
+            lines_processed += 1
+
         if not transactions:
-             return jsonify({"error": "Format invalide ou données insuffisantes."}), 400
+             return jsonify({"error": "Format invalide ou aucune donnée chiffrée détectée."}), 400
 
         result_data = perform_analysis(transactions)
         
@@ -110,7 +138,7 @@ def analyze_upload():
         
         return jsonify({
             "status": "success",
-            "message": "Analyse terminée.",
+            "message": f"Analyse terminée ({len(transactions)} transactions valables).",
             "data": result_data,
             "temp_user_id": user_id,
             "report_token": encoded_token
