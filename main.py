@@ -155,7 +155,7 @@ def create_checkout_session():
         return jsonify({"error": str(e)}), 500
 
 # ==========================================
-# GÉNÉRATEUR DE RAPPORT PDF NATIF (SANS EMOJIS)
+# GÉNÉRATEUR DE RAPPORT PDF NATIF (VERSION FINALE STABLE)
 # ==========================================
 class PDF(FPDF):
     def header(self):
@@ -195,7 +195,6 @@ def generate_pdf_report(uid, analysis_data):
     pdf.set_xy(15, pdf.get_y() + 5)
     pdf.set_font('Arial', 'B', 12)
     
-    # ✅ CORRECTION ICI : Suppression des emojis ⚠️
     alert_text = (f"ALERTE CRITIQUE DETECTEE\n"
                   f"Nous avons identifie {summary['subscriptions_detected']} abonnements recurrents non essentiels.\n"
                   f"Perte mensuelle estimee : {summary['monthly_loss_identified']} EUR\n"
@@ -254,14 +253,14 @@ def generate_pdf_report(uid, analysis_data):
     pdf.ln(2)
     pdf.set_font('Arial', '', 11)
     
-    # ✅ CORRECTION ICI : Suppression des emojis 💰
     action_text = (f"En resilient ces services superflus, vous recupererez immediatement :\n"
                    f"+ {financial_action['client_savings_net_monthly']} EUR nets par mois dans votre poche.\n"
                    f"Frais de service Sentinel appliques ({int(financial_action['service_fee_rate']*100)}%) : {financial_action['platform_revenue_gross']} EUR/mois.")
                    
     pdf.multi_cell(0, 7, action_text)
 
-    return pdf.output(dest='S').encode('latin-1')
+    # ✅ LA CORRECTION CRUCIALE POUR ÉVITER LE CRASH BYTEARRAY
+    return bytes(pdf.output()) 
 
 
 @app.route('/download-report/<uid>', methods=['GET'])
