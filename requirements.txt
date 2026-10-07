@@ -4,4 +4,3 @@ python-dotenv==1.0.0
 requests==2.31.0
 stripe==7.0.0
 fpdf2==2.7.9
-fpdf2==2.7.9
