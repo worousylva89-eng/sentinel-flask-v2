@@ -134,8 +134,18 @@ function showSuccessScreen() {
     
     if(formContent) formContent.style.display = 'none';
     
-    // Récupère l'UID sauvegardé avant le paiement Stripe
+    // Récupère l'UID et le Token depuis sessionStorage ou l'URL (si passé par Stripe)
     const uid = sessionStorage.getItem('audit_uid') || 'unknown';
+    let token = sessionStorage.getItem('audit_token');
+    
+    // Sécurité : Si sessionStorage a été perdu (ex: navigation stricte), on essaie de lire l'URL actuelle
+    if(!token && window.location.href.includes('token=')) {
+        const params = new URLSearchParams(window.location.search);
+        token = params.get('token');
+    }
+
+    // Construction du lien final avec le token inclus pour la robustesse
+    const reportLink = `/final-report/${uid}${token ? '?token=' + encodeURIComponent(token) : ''}`;
 
     successView.innerHTML = `
         <div class="success-container">
@@ -143,8 +153,8 @@ function showSuccessScreen() {
             <h2 class="success-title">Paiement Reçu !</h2>
             <p class="success-desc">Merci ! Votre transaction est validée.<br>Votre rapport détaillé est prêt.</p>
             
-            <!-- LIEN DIRECT VERS LE RAPPORT AUTO-GÉNÉRÉ -->
-            <a href="/final-report/${uid}" target="_blank" class="btn-primary-large" style="display:block; text-decoration:none; background:#d32f2f; margin-top:15px; font-size:1.2em; padding:20px;">
+            <!-- LIEN DIRECT VERS LE RAPPORT AUTO-GÉNÉRÉ AVEC TOKEN -->
+            <a href="${reportLink}" target="_blank" class="btn-primary-large" style="display:block; text-decoration:none; background:#d32f2f; margin-top:15px; font-size:1.2em; padding:20px;">
                 📄 VOIR MON RAPPORT COMPLET MAINTENANT
             </a>
             
@@ -171,6 +181,7 @@ function initFormLogic() {
     const payNowBtn = document.getElementById('payNowBtn');
 
     let currentUid = null; 
+    let currentToken = null; // Variable pour stocker le token encodé
     let dataSource = null; 
 
     // Activation/Désactivation du bouton selon ce qui est rempli
@@ -234,7 +245,12 @@ function initFormLogic() {
             
             if(data.status === 'success') {
                 currentUid = data.temp_user_id;
+                currentToken = data.report_token; // Capture du token crucial
+                
+                // Stockage robuste
                 sessionStorage.setItem('audit_uid', currentUid);
+                sessionStorage.setItem('audit_token', currentToken);
+                
                 showQuickSummary(data.data.analysis_summary); 
                 paySection.style.display = 'block';
             } else {
@@ -264,18 +280,20 @@ function initFormLogic() {
 
     // Bouton Paiement Stripe
     payNowBtn.addEventListener('click', async () => {
-        if(!currentUid) return alert("Erreur interne");
+        if(!currentUid || !currentToken) return alert("Erreur interne : Données manquantes");
         const email = prompt("Entrez votre email pour recevoir la facture :", "");
         if(!email || !email.includes('@')) return alert("Email invalide");
-
-        // Stockage temporaire pour le retour Stripe
-        sessionStorage.setItem('audit_email', email);
 
         try {
             const res = await fetch('/create-checkout-session', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email: email, temp_user_id: currentUid })
+                // ENVOI DU TOKEN À STRIPE POUR LA REDIRECTION
+                body: JSON.stringify({ 
+                    email: email, 
+                    temp_user_id: currentUid,
+                    report_token: currentToken 
+                })
             });
             const data = await res.json();
             if(data.url) window.location.href = data.url;
