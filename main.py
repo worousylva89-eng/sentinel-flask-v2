@@ -155,7 +155,7 @@ def create_checkout_session():
         return jsonify({"error": str(e)}), 500
 
 # ==========================================
-# GÉNÉRATEUR DE RAPPORT PDF NATIF (DOWNLOAD DIRECT)
+# GÉNÉRATEUR DE RAPPORT PDF NATIF (SANS EMOJIS)
 # ==========================================
 class PDF(FPDF):
     def header(self):
@@ -188,23 +188,30 @@ def generate_pdf_report(uid, analysis_data):
     pdf.cell(0, 8, f'Date d\'analyse : {datetime.now().strftime("%d/%m/%Y")}', ln=True)
     pdf.ln(5)
 
-    # Alerte Critique Box
+    # Alerte Critique Box (Texte pur sans emoji)
     pdf.set_fill_color(255, 243, 224) # Orange clair bg
     pdf.set_text_color(230, 81, 0) # Texte orange foncé
     pdf.rect(10, pdf.get_y(), 190, 35, style='F')
     pdf.set_xy(15, pdf.get_y() + 5)
     pdf.set_font('Arial', 'B', 12)
-    pdf.multi_cell(0, 6, f'⚠️ ALERTE CRITIQUE DÉTECTÉE\nNous avons identifié {summary["subscriptions_detected"]} abonnements récurrents non essentiels.\nPerte mensuelle estimée : {summary["monthly_loss_identified"]} €\nPerte annuelle projetée : {summary["yearly_loss_projected"]} €')
+    
+    # ✅ CORRECTION ICI : Suppression des emojis ⚠️
+    alert_text = (f"ALERTE CRITIQUE DETECTEE\n"
+                  f"Nous avons identifie {summary['subscriptions_detected']} abonnements recurrents non essentiels.\n"
+                  f"Perte mensuelle estimee : {summary['monthly_loss_identified']} EUR\n"
+                  f"Perte annuelle projettee : {summary['yearly_loss_projected']} EUR")
+                  
+    pdf.multi_cell(0, 6, alert_text)
     
     pdf.set_xy(10, pdf.get_y() + 10)
     pdf.set_text_color(0)
     pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, 'Détail des Pertes Identifiées', ln=True)
+    pdf.cell(0, 10, 'Detail des Pertes Identifiees', ln=True)
     pdf.ln(2)
 
     # Tableau HTML-like simulé avec cells
     col_widths = [80, 55, 55]
-    headers = ['Catégorie', 'Coût Mensuel', 'Impact Annuel']
+    headers = ['Categorie', 'Cout Mensuel', 'Impact Annuel']
     
     # Header Row
     pdf.set_font('Arial', 'B', 10)
@@ -219,8 +226,8 @@ def generate_pdf_report(uid, analysis_data):
     pdf.set_text_color(0)
     for idx, item in enumerate(detected_items):
         cat_name = item['category_code'].replace('_', ' ').title()
-        monthly_cost = f"-{item['amount_monthly']} €"
-        yearly_impact = f"≈ {round(item['amount_monthly']*12, 2)} €"
+        monthly_cost = f"-{item['amount_monthly']} EUR"
+        yearly_impact = f"~ {round(item['amount_monthly']*12, 2)} EUR"
         
         if idx % 2 == 0:
             pdf.set_fill_color(245, 245, 245) # Zebra striping light gray
@@ -237,16 +244,22 @@ def generate_pdf_report(uid, analysis_data):
     pdf.set_font('Arial', 'B', 11)
     pdf.set_text_color(211, 47, 47) # Rouge alerte
     pdf.cell(sum(col_widths[:-1]), 8, 'TOTAL PERDU PAR AN :', border=1, align='R')
-    pdf.cell(col_widths[-1], 8, f'{summary["yearly_loss_projected"]} €', border=1, align='R')
+    pdf.cell(col_widths[-1], 8, f'{summary["yearly_loss_projected"]} EUR', border=1, align='R')
     pdf.ln(10)
 
-    # Plan d'action
+    # Plan d'action (Texte pur sans emoji)
     pdf.set_text_color(0)
     pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, '💰 Plan d\'Action & Gain Potentiel', ln=True)
+    pdf.cell(0, 10, 'Plan d\'Action & Gain Potentiel', ln=True)
     pdf.ln(2)
     pdf.set_font('Arial', '', 11)
-    pdf.multi_cell(0, 7, f'En résiliant ces services superflus, vous récupérerez immédiatement :\n• + {financial_action["client_savings_net_monthly"]} € nets par mois dans votre poche.\n• Frais de service Sentinel appliqués ({int(financial_action["service_fee_rate"]*100)}%) : {financial_action["platform_revenue_gross"]} €/mois.')
+    
+    # ✅ CORRECTION ICI : Suppression des emojis 💰
+    action_text = (f"En resilient ces services superflus, vous recupererez immediatement :\n"
+                   f"+ {financial_action['client_savings_net_monthly']} EUR nets par mois dans votre poche.\n"
+                   f"Frais de service Sentinel appliques ({int(financial_action['service_fee_rate']*100)}%) : {financial_action['platform_revenue_gross']} EUR/mois.")
+                   
+    pdf.multi_cell(0, 7, action_text)
 
     return pdf.output(dest='S').encode('latin-1')
 
