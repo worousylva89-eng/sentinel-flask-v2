@@ -145,7 +145,7 @@ def create_checkout_session():
             mode='payment',
             success_url=f"https://sentinel-flask-v2-2.onrender.com/?status=paid&uid={temp_user_id}", 
             cancel_url="https://sentinel-flask-v2-2.onrender.com/",
-            metadata={'customer_email': customer_email, 'internal_uid': temp_user_id} 
+            metadata={'customer_email': customer_email, 'internal_uid': temp_user_id}
         )
         
         return jsonify({"url": session.url})
@@ -168,6 +168,99 @@ def get_report_data(uid):
         "data": analysis_data,
         "generated_at": datetime.now().isoformat()
     })
+
+# ==========================================
+# GÉNÉRATEUR DE RAPPORT FINAL INSTANTANÉ (HTML)
+# ==========================================
+@app.route('/final-report/<uid>', methods=['GET'])
+def serve_final_report(uid):
+    """Génère et retourne le rapport HTML complet instantanément."""
+    analysis_data = last_analyses_store.get(uid)
+    
+    if not analysis_data:
+        return "<h2>❌ Erreur : Rapport introuvable ou expiré.</h2><a href='/'>Retour Accueil</a>", 404
+        
+    summary = analysis_data['analysis_summary']
+    financial_action = analysis_data['financial_action']
+    detected_items = analysis_data['detected_items_anonymized']
+    
+    # Construction dynamique du tableau des abonnements détectés
+    items_html = ""
+    for item in detected_items:
+        items_html += f"""
+        <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:12px; font-weight:bold; color:#d32f2f;">{item['category_code'].replace('_', ' ').title()}</td>
+            <td style="padding:12px; text-align:right; font-size:1.1em;">-{item['amount_monthly']} € / mois</td>
+            <td style="padding:12px; text-align:right; color:#666;">≈ {round(item['amount_monthly']*12, 2)} € / an</td>
+        </tr>
+        """
+        
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>Rapport Audit Sentinel - {uid}</title>
+        <style>
+            body {{ font-family: 'Segoe UI', sans-serif; background:#f9f9f9; padding:40px; color:#333; }}
+            .container {{ max-width:800px; margin:auto; background:white; padding:40px; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.1); }}
+            h1 {{ color:#1a237e; border-bottom:3px solid #ff9800; padding-bottom:15px; }}
+            .alert-box {{ background:#fff3e0; border-left:5px solid #ff9800; padding:20px; margin:25px 0; border-radius:4px; }}
+            table {{ width:100%; border-collapse:collapse; margin-top:20px; }}
+            th {{ background:#1a237e; color:white; padding:15px; text-align:left; }}
+            tr:nth-child(even) {{ background:#f5f5f5; }}
+            .total-row td {{ font-weight:bold; font-size:1.2em; color:#d32f2f; border-top:2px solid #ddd; }}
+            .print-btn {{ display:inline-block; background:#2e7d32; color:white; padding:15px 30px; text-decoration:none; border-radius:6px; font-weight:bold; margin-top:30px; cursor:pointer; border:none; font-size:1em; }}
+            .print-btn:hover {{ background:#1b5e20; }}
+            @media print {{ .no-print {{ display:none !important; }} body {{ padding:0; }} .container {{ box-shadow:none; }} }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🛡️ RAPPORT D'AUDIT FINANCIER SENTINEL</h1>
+            <p><strong>ID Client :</strong> {uid} | <strong>Date :</strong> {datetime.now().strftime('%d/%m/%Y')}</p>
+            
+            <div class="alert-box">
+                <h3 style="margin-top:0; color:#e65100;">⚠️ ALERTE CRITIQUE DÉTECTÉE</h3>
+                <p>Nous avons identifié <strong>{summary['subscriptions_detected']}</strong> abonnements récurrents non essentiels sur vos relevés analysés.</p>
+                <p>Cela représente une fuite mensuelle estimée à <strong>{summary['monthly_loss_identified']} €</strong>.</p>
+                <p>Votre perte annuelle projetée s'élève à : <span style="font-size:1.5em; font-weight:bold; color:red;">{summary['yearly_loss_projected']} €</span></p>
+            </div>
+
+            <h2>Détail des Pertes Identifiées</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Catégorie</th>
+                        <th style="text-align:right;">Coût Mensuel</th>
+                        <th style="text-align:right;">Impact Annuel</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {items_html}
+                    <tr class="total-row">
+                        <td colspan="2" style="text-align:right;">TOTAL PERDU PAR AN :</td>
+                        <td style="text-align:right;">{summary['yearly_loss_projected']} €</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>💰 Plan d'Action & Gain Potentiel</h2>
+            <p>En résiliant ces services superflus, vous récupérerez immédiatement :</p>
+            <ul style="line-height:1.8; font-size:1.1em;">
+                <li><strong>+ {financial_action['client_savings_net_monthly']} €</strong> nets par mois dans votre poche.</li>
+                <li>Frais de service Sentinel appliqués ({int(financial_action['service_fee_rate']*100)}%) : {financial_action['platform_revenue_gross']} €/mois.</li>
+                <li>Économies brutes réalisées avant frais : {summary['monthly_loss_identified']} €/mois.</li>
+            </ul>
+            
+            <button onclick="window.print()" class="print-btn no-print">🖨️ Imprimer / Sauvegarder en PDF</button>
+            <br><br>
+            <a href="/" class="no-print" style="color:#666; text-decoration:none;">← Retour à l'accueil Sentinel Finance</a>
+        </div>
+    </body>
+    </html>
+    """
+    return html_content
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
