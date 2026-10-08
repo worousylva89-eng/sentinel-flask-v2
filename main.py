@@ -84,13 +84,9 @@ def analyze_digital_platforms(transactions_list):
     total_loss = 0
     
     # ✅ DICTIONNAIRE DE MOTS-CLÉS MULTILINGUES & LOCAUX
-    # On couvre Anglais, Français, et termes courants Mobile Money/Crypto
     keywords_fees = [
-        # Anglophone Global
         "FEE", "FEES", "CHARGE", "COMMISSION", "SPREAD", "COST", "PRICE", 
-        # Francophone Africa/Europe
         "FRAIS", "COMMISSION", "COÛT", "COUT", "CHARGEMENT", "SERVICE", 
-        # Termes spécifiques Mobile Money / Fintech
         "WITHDRAWAL", "RETRAIT", "TRANSFER", "TRANSFERT", "SEND MONEY",
         "TOP UP", "RECHARGE", "AIRTIME", "CRÉDIT", "CREDIT",
         "NETWORK", "OPERATOR", "GAS", "MINER", "SWAP", "OVERNIGHT",
@@ -101,24 +97,20 @@ def analyze_digital_platforms(transactions_list):
         label_upper = str(t.get('label', '')).upper()
         amount = float(t.get('amount', 0))
         
-        # Seuls les montants négatifs (dépenses/pertes) nous intéressent ici
         if amount >= 0:
             continue
             
         matched_keyword = None
         
-        # Recherche intelligente du mot-clé dans le libellé
         for kw in keywords_fees:
             if kw in label_upper:
                 matched_keyword = kw
                 break
                 
         if matched_keyword:
-            # Catégorisation dynamique basée sur le contexte du libellé
             category = "DIGITAL_FEE_HIDDEN"
             diagnosis = f"Frais caché détecté ({matched_keyword})"
             
-            # Affinage des catégories pour le rapport final
             if any(x in label_upper for x in ["WITHDRAWAL", "RETRAIT", "CASH"]):
                 category = "CASH_WITHDRAWAL_FEE"
                 diagnosis = "Surcoût lors du retrait d'espèces"
@@ -171,55 +163,47 @@ def analyze_upload():
         return jsonify({"error": "Nom de fichier vide"}), 400
         
     try:
-        # Lecture brute du contenu (ignore totalement l'extension .txt/.csv)
         content = file.read().decode('utf-8')
         transactions = []
         
-        # Utilisation de csv.reader qui gère nativement les virgules et guillemets
         reader = csv.reader(io.StringIO(content))
         
         lines_processed = 0
         skipped_header = False
 
         for row in reader:
-            if not row: continue # Ignore lignes vides
+            if not row: continue 
             
-            # Détection intelligente du Header sur la PREMIERE ligne seulement
             if lines_processed == 0 and not skipped_header:
                 first_cell = str(row[0]).upper()
                 if any(keyword in first_cell for keyword in ["LIBELLE", "LABEL", "DESCRIPTION", "DATE", "MONTANT", "AMOUNT"]):
                     skipped_header = True
-                    continue # Saute cette ligne, c'était bien un titre
+                    continue
                     
-            # Traitement des données valides
             if len(row) >= 2:
                 label = str(row[0]).strip()
                 raw_amount = str(row[1]).strip()
                 
                 try:
-                    # Nettoyage avancé : retire espaces, €, $, remplace , par .
                     clean_amount = raw_amount.replace(',', '.').replace(' ', '').replace('€', '').replace('$', '')
                     
-                    # Gestion des nombres négatifs entre parenthèses ex: "(50.00)" -> "-50.00"
                     if clean_amount.startswith('(') and clean_amount.endswith(')'):
                         clean_amount = '-' + clean_amount[1:-1]
                         
                     amount = float(clean_amount)
                     
-                    # On ignore les montants égaux à 0 ou les libellés vides
                     if amount != 0 and label:
                         transactions.append({"label": label, "amount": amount})
                         
                 except ValueError:
-                    continue # Si la conversion échoue, on passe à la ligne suivante silencieusement
+                    continue
                     
             lines_processed += 1
 
         if not transactions:
              return jsonify({"error": "Format invalide ou aucune donnée chiffrée détectée."}), 400
 
-        # ✅ DÉTECTION AUTOMATIQUE DU MODE D'ANALYSE
-        mode_param = request.form.get('mode', 'classic_file') # Reçoit 'digital_text' ou 'classic_file'
+        mode_param = request.form.get('mode', 'classic_file') 
         
         if mode_param == 'digital_text':
             result_data = analyze_digital_platforms(transactions)
@@ -279,14 +263,14 @@ def create_checkout_session():
         return jsonify({"error": str(e)}), 500
 
 # ==========================================
-# GÉNÉRATEUR DE RAPPORT PDF NATIF (ADAPTÉ AUX 2 MODES)
+# GÉNÉRATEUR DE RAPPORT PDF NATIF (AVEC PLAN D'ACTION CONCRET)
 # ==========================================
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 15)
         self.cell(0, 10, 'RAPPORT D\'AUDIT FINANCIER SENTINEL', ln=True, align='C')
         self.ln(5)
-        self.set_draw_color(26, 35, 126) # Bleu foncé
+        self.set_draw_color(26, 35, 126) 
         self.line(10, self.get_y(), 200, self.get_y())
         self.ln(5)
 
@@ -305,7 +289,6 @@ def generate_pdf_report(uid, analysis_data):
     financial_action = analysis_data['financial_action']
     detected_items = analysis_data['detected_items_anonymized']
     
-    # Adaptation dynamique selon le mode scanné
     is_digital = summary.get('scan_mode') == 'PLATFORM_DIGITAL_AUDIT'
     
     # Infos Client & Date
@@ -315,9 +298,9 @@ def generate_pdf_report(uid, analysis_data):
     pdf.cell(0, 8, f'Date d\'analyse : {datetime.now().strftime("%d/%m/%Y")}', ln=True)
     pdf.ln(5)
 
-    # Alerte Critique Box (Texte pur sans emoji)
-    pdf.set_fill_color(255, 243, 224) # Orange clair bg
-    pdf.set_text_color(230, 81, 0) # Texte orange foncé
+    # Alerte Critique Box
+    pdf.set_fill_color(255, 243, 224) 
+    pdf.set_text_color(230, 81, 0) 
     pdf.rect(10, pdf.get_y(), 190, 35, style='F')
     pdf.set_xy(15, pdf.get_y() + 5)
     pdf.set_font('Arial', 'B', 12)
@@ -341,7 +324,6 @@ def generate_pdf_report(uid, analysis_data):
     pdf.cell(0, 10, 'Detail des Pertes Identifiees', ln=True)
     pdf.ln(2)
 
-    # Tableau HTML-like simulé avec cells
     col_widths = [80, 55, 55]
     
     if is_digital:
@@ -349,7 +331,6 @@ def generate_pdf_report(uid, analysis_data):
     else:
         headers = ['Categorie Abonnement', 'Cout Mensuel', 'Impact Annuel']
     
-    # Header Row
     pdf.set_font('Arial', 'B', 10)
     pdf.set_fill_color(26, 35, 126)
     pdf.set_text_color(255)
@@ -357,12 +338,11 @@ def generate_pdf_report(uid, analysis_data):
         pdf.cell(col_widths[i], 8, h, border=1, fill=True, align='C' if i > 0 else 'L')
     pdf.ln()
 
-    # Data Rows
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(0)
     for idx, item in enumerate(detected_items):
         if is_digital:
-            cat_name = item.get('platform_label', 'Inconnu')[:30] # Troncature pour éviter débordement
+            cat_name = item.get('platform_label', 'Inconnu')[:30] 
             cost_val = f"-{item['cost_incurred']} EUR"
             yearly_impact = f"~ {round(item['cost_incurred']*12, 2)} EUR"
         else:
@@ -371,7 +351,7 @@ def generate_pdf_report(uid, analysis_data):
             yearly_impact = f"~ {round(item['amount_monthly']*12, 2)} EUR"
         
         if idx % 2 == 0:
-            pdf.set_fill_color(245, 245, 245) # Zebra striping light gray
+            pdf.set_fill_color(245, 245, 245) 
             fill_style = True
         else:
             fill_style = False
@@ -381,29 +361,49 @@ def generate_pdf_report(uid, analysis_data):
         pdf.cell(col_widths[2], 8, yearly_impact, border=1, fill=fill_style, align='R')
         pdf.ln()
 
-    # Total Line
     total_annual = summary['annual_leak_projected'] if is_digital else summary['yearly_loss_projected']
     pdf.set_font('Arial', 'B', 11)
-    pdf.set_text_color(211, 47, 47) # Rouge alerte
+    pdf.set_text_color(211, 47, 47) 
     pdf.cell(sum(col_widths[:-1]), 8, 'TOTAL PERDU PAR AN :', border=1, align='R')
     pdf.cell(col_widths[-1], 8, f'{total_annual} EUR', border=1, align='R')
     pdf.ln(10)
 
-    # Plan d'action (Texte pur sans emoji)
+    # --- SECTION GAIN POTENTIEL ---
     pdf.set_text_color(0)
     pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, 'Plan d\'Action & Gain Potentiel', ln=True)
+    pdf.cell(0, 10, '💰 Votre Gain Potentiel Réel', ln=True)
     pdf.ln(2)
     pdf.set_font('Arial', '', 11)
     
     gain_net = financial_action['client_recovery_potential_net'] if is_digital else financial_action['client_savings_net_monthly']
     fee_pct = int(financial_action['service_fee_rate']*100)
     
-    action_text = (f"En optimisant ces flux financiers, vous recupererez immediatement :\n"
+    action_text = (f"En appliquant nos recommandations ci-dessous, vous recupererez immediatement :\n"
                    f"+ {gain_net} EUR nets par mois dans votre poche.\n"
-                   f"Frais de service Sentinel appliques ({fee_pct}%) : {financial_action['platform_revenue_gross']} EUR/mois.")
+                   f"(Note : Ce calcul inclut deja les frais de service Sentinel de {fee_pct}%).")
                    
     pdf.multi_cell(0, 7, action_text)
+    pdf.ln(5)
+
+    # --- SECTION RECOMMANDATIONS CONCRÈTES (AJOUT CRUCIAL) ---
+    pdf.set_font('Arial', 'B', 13)
+    pdf.set_text_color(26, 35, 126) # Bleu foncé
+    pdf.cell(0, 8, '📋 Vos Prochaines Étapes Clés :', ln=True)
+    pdf.set_text_color(0)
+    pdf.ln(2)
+    
+    recommendations = """
+1. RESILIEZ IMMEDIATEMENT : Contactez les services listés ci-dessus pour annuler les abonnements non utilisés. Gardez la preuve de résiliation (email/capture).
+2. CHANGEZ D'OPERATEUR : Pour les frais Mobile Money élevés, comparez avec Wave, Orange Money ou les banques en ligne qui offrent souvent des retraits gratuits ou moins chers.
+3. NEGOCIEZ VOS FORFAITS : Utilisez ce rapport comme argument commercial auprès de votre fournisseur Internet/Telco pour obtenir une réduction fidélité.
+4. SURVEILLEZ MENSUELLEMENT : Ré-executez cet audit chaque mois via notre plateforme pour vérifier que les fuites sont bien colmatées et découvrir de nouvelles économies.
+    """
+    pdf.multi_cell(0, 6, recommendations.strip())
+    
+    pdf.ln(5)
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100)
+    pdf.multi_cell(0, 5, "⚠️ Important : Sentinel Finance est un outil d'audit et de conseil. Nous n'avons pas accès à vos comptes bancaires et ne pouvons pas effectuer de virements directs. La récupération des fonds s'effectue par vos propres actions suite à l'application de ce plan.")
 
     # ✅ LA CORRECTION CRUCIALE POUR ÉVITER LE CRASH BYTEARRAY
     return bytes(pdf.output()) 
@@ -415,7 +415,6 @@ def download_report_pdf(uid):
     
     analysis_data = None
     
-    # Récupération données (Mémoire ou Token URL)
     if uid in last_analyses_store:
         analysis_data = last_analyses_store[uid]
     else:
@@ -448,7 +447,6 @@ def download_report_pdf(uid):
 # Ancienne route conservée juste au cas où, mais on utilise maintenant /download-report
 @app.route('/final-report/<uid>', methods=['GET'])
 def serve_final_report_redirect(uid):
-    # Redirection simple vers la nouvelle route propre
     token = request.args.get('token', '')
     query_string = f"?token={token}" if token else ""
     return redirect(f"/download-report/{uid}{query_string}")
