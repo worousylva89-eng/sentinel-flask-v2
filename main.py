@@ -75,45 +75,73 @@ def perform_analysis(transactions_list):
     }
 
 # ==========================================
-# LOGIQUE MÉTIER SPÉCIALISÉE (DIGITAL / WALLETS)
+# LOGIQUE MÉTIER SPÉCIALISÉE (DIGITAL / WALLETS) - VERSION GLOBALE ENRICHIE
 # ==========================================
 def analyze_digital_platforms(transactions_list):
-    """Analyse les pertes liées aux frais cachés sur les plateformes digitales."""
+    """Analyse les pertes liées aux frais cachés sur les plateformes digitales (Monde Entier)."""
     
     detected_losses = []
     total_loss = 0
     
-    # Mots-clés critiques pour identifier les pertes invisibles
-    keywords_fees = ["FEE", "CHARGE", "COMMISSION", "SPREAD", "WITHDRAWAL COST", "RETRAITS FRAIS", "DEPOT FRAIS", "SWAP RATE"]
-    keywords_inactive = ["INACTIVITY", "DORMANT ACCOUNT", "MAINTENANCE FEE"]
+    # ✅ DICTIONNAIRE DE MOTS-CLÉS MULTILINGUES & LOCAUX
+    # On couvre Anglais, Français, et termes courants Mobile Money/Crypto
+    keywords_fees = [
+        # Anglophone Global
+        "FEE", "FEES", "CHARGE", "COMMISSION", "SPREAD", "COST", "PRICE", 
+        # Francophone Africa/Europe
+        "FRAIS", "COMMISSION", "COÛT", "COUT", "CHARGEMENT", "SERVICE", 
+        # Termes spécifiques Mobile Money / Fintech
+        "WITHDRAWAL", "RETRAIT", "TRANSFER", "TRANSFERT", "SEND MONEY",
+        "TOP UP", "RECHARGE", "AIRTIME", "CRÉDIT", "CREDIT",
+        "NETWORK", "OPERATOR", "GAS", "MINER", "SWAP", "OVERNIGHT",
+        "INACTIVITY", "MAINTENANCE", "ADMINISTRATION", "PROCESSING"
+    ]
     
     for t in transactions_list:
         label_upper = str(t.get('label', '')).upper()
         amount = float(t.get('amount', 0))
         
-        # Cas 1 : Frais explicites négatifs (ex: -2.50€ pour un dépôt Wave)
-        if any(kw in label_upper for kw in keywords_fees) and amount < 0:
+        # Seuls les montants négatifs (dépenses/pertes) nous intéressent ici
+        if amount >= 0:
+            continue
+            
+        matched_keyword = None
+        
+        # Recherche intelligente du mot-clé dans le libellé
+        for kw in keywords_fees:
+            if kw in label_upper:
+                matched_keyword = kw
+                break
+                
+        if matched_keyword:
+            # Catégorisation dynamique basée sur le contexte du libellé
             category = "DIGITAL_FEE_HIDDEN"
-            detail_reason = "Frais de transaction/transfert dissimulés"
+            diagnosis = f"Frais caché détecté ({matched_keyword})"
             
-        # Cas 2 : Compte dormant/inactif (souvent ignoré par les utilisateurs)
-        elif any(kw in label_upper for kw in keywords_inactive) and amount < 0:
-            category = "ACCOUNT_DORMANCY_PENALTY"
-            detail_reason = "Pénalité d'inactivité bancaire/wallet"
-            
-        else:
-            continue # On ignore si ce n'est pas pertinent
-            
-        detected_losses.append({
-            "ref_hash": hash(label_upper) % 100000000,
-            "platform_label": t.get('label'), # Ex: "WAVE WITHDRAWAL FEE"
-            "cost_incurred": abs(amount),
-            "category_code": category,
-            "diagnosis": detail_reason
-        })
-        total_loss += abs(amount)
+            # Affinage des catégories pour le rapport final
+            if any(x in label_upper for x in ["WITHDRAWAL", "RETRAIT", "CASH"]):
+                category = "CASH_WITHDRAWAL_FEE"
+                diagnosis = "Surcoût lors du retrait d'espèces"
+            elif any(x in label_upper for x in ["TRANSFER", "TRANSFERT", "SEND"]):
+                category = "TRANSFER_COMMISSION"
+                diagnosis = "Commission de transfert inter-compte/tiers"
+            elif any(x in label_upper for x in ["CRYPTO", "BTC", "ETH", "BINANCE", "KRAKEN", "GAS"]):
+                category = "BLOCKCHAIN_GAS_SPREAD"
+                diagnosis = "Frais réseau blockchain ou spread exchange"
+            elif any(x in label_upper for x in ["INACTIVITY", "MAINTENANCE"]):
+                category = "ACCOUNT_DORMANCY_PENALTY"
+                diagnosis = "Pénalité de compte inactif/maintenance"
 
-    commission = round(total_loss * 0.18, 2) # Tarif légèrement supérieur car expertise niche
+            detected_losses.append({
+                "ref_hash": hash(label_upper) % 100000000,
+                "platform_label": t.get('label'),
+                "cost_incurred": abs(amount),
+                "category_code": category,
+                "diagnosis": diagnosis
+            })
+            total_loss += abs(amount)
+
+    commission = round(total_loss * 0.18, 2)
     net_gain = round(total_loss - commission, 2)
 
     return {
@@ -121,8 +149,8 @@ def analyze_digital_platforms(transactions_list):
             "scan_mode": "PLATFORM_DIGITAL_AUDIT",
             "total_operations_scanned": len(transactions_list),
             "hidden_costs_detected": len(detected_losses),
-            "monthly_bleed_estimated": round(total_loss / 3, 2), # Estimation mensuelle basée sur trimestre
-            "annual_leak_projected": round(total_loss * 4, 2)   # Projection annuelle agressive
+            "monthly_bleed_estimated": round(total_loss / 3, 2),
+            "annual_leak_projected": round(total_loss * 4, 2)
         },
         "financial_action": {
             "service_fee_rate": 0.18,
