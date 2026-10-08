@@ -59,6 +59,19 @@
         .tags-cloud { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
         .tag { background:#ffe0b2; padding:2px 8px; border-radius:12px; font-size:0.8em; font-weight:bold; color:#e65100; }
 
+        /* Guide Pas-à-Pas (NOUVEAU) */
+        .guide-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 0 8px 8px 0;
+        }
+        .guide-box h4 { margin: 0 0 10px; color: #0d47a1; font-size: 1em; }
+        .guide-box ol { margin: 0; padding-left: 20px; line-height: 1.6; font-size: 0.9em; color: #333; }
+        .guide-box li strong { color: #1a237e; }
+        .highlight-red { color: #d32f2f; font-weight: bold; }
+
         /* Boutons Actions */
         .action-buttons { display: grid; gap: 10px; margin-top: 20px; }
         .btn-secondary-large { background: #ff9800; color: white; border: none; padding: 15px 25px; font-size: 1.1em; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background 0.2s; opacity: 0.5; cursor: not-allowed; width: 100%; }
@@ -121,19 +134,33 @@
 
         <!-- ZONE 2 : SAISIE DIGITALE / WALLET (MONDE ENTIER) -->
         <div id="zoneDigitalText" class="audit-zone">
+            
+            <!-- GUIDE VISUEL INTUITIF (AJOUT CRUCIAL) -->
+            <div class="guide-box">
+                <h4>📱 Comment récupérer vos frais cachés ?</h4>
+                <ol>
+                    <li><strong>Ouvrez votre appli</strong> (MTN MoMo, Wave, Orange Money, Binance...).</li>
+                    <li><strong>Allez dans "Historique"</strong>, "Transactions" ou "Reçus".</li>
+                    <li><strong>Faites une capture d'écran</strong> de la liste récente.</li>
+                    <li><strong>Copiez le texte visible</strong> OU recopiez juste les lignes contenant le mot <span class="highlight-red">FRAIS</span>, <span class="highlight-red">COMMISSION</span> ou <span class="highlight-red">CHARGE</span>.</li>
+                    <li><strong>Collez ici ci-dessous :</strong></li>
+                </ol>
+            </div>
+
             <div class="input-wrapper">
-                <textarea id="digitalDataInput" class="audit-textarea" placeholder="Collez ici vos historiques de transactions digitales...&#10;&#10;Exemple Universel :&#10;WAVE WITHDRAWAL FEE,-2.50&#10;BINANCE SPREAD COST,-15.00&#10;REVOLUT INACTIVITY,-1.00&#10;MTN MOMO TRANSFER CHARGE,-1.50&#10;PAYPAL CURRENCY CONV.,-0.99&#10;OPAY SERVICE FEE,-1.00"></textarea>
+                <textarea id="digitalDataInput" class="audit-textarea" placeholder="Exemple MTN MoMo :&#10;Retrait Cash,-500.00&#10;Frais Service Retrait,-2.50&#10;Transfert Ami,-100.00&#10;Commission Transfert,-1.00&#10;&#10;Exemple Binance :&#10;Trading Fee BTC/USDT,-0.05&#10;Withdrawal Cost ETH,-1.20"></textarea>
                 
                 <!-- LISTE DES RÉSEAUX SUPPORTÉS -->
                 <div class="network-list">
-                    <strong>✅ Réseaux Mondiaux Supportés :</strong>
+                    <strong>✅ Où trouver ces infos ?</strong>
                     <div class="tags-cloud">
-                        <span class="tag">Africa: Wave, MoMo, Orange Money, MTN, Airtel, Opay, Palmpay, Flutterwave</span>
-                        <span class="tag">Crypto/Trade: Binance, Coinbase, Kraken, eToro, Bybit, KuCoin</span>
-                        <span class="tag">Global/Fintech: PayPal, Revolut, Wise, N26, Chime, CashApp, Venmo, Skrill</span>
-                        <span class="tag">Europe: Lydia, Qonto, Shine, Bunq, Klarna</span>
+                        <span class="tag">MTN MoMo -> Historique</span>
+                        <span class="tag">Wave -> Reçus/Dépenses</span>
+                        <span class="tag">Orange Money -> Transactions</span>
+                        <span class="tag">Binance/Coinbase -> Wallet History</span>
+                        <span class="tag">PayPal -> Activity Log</span>
                     </div>
-                    <small style="display:block; margin-top:8px; color:#bf360c;">💡 Astuce : Incluez les mots-clés 'FEE', 'SPREAD', 'CHARGE', 'COMMISSION' pour une détection parfaite.</small>
+                    <small style="display:block; margin-top:8px; color:#bf360c;">💡 Astuce : Si vous voyez "Frais", "Fee", "Charge", c'est exactement ce qu'on cherche !</small>
                 </div>
             </div>
         </div>
