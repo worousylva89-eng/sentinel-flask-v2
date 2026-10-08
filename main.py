@@ -28,8 +28,11 @@ last_analyses_store = {}
 def home():
     return send_from_directory('.', 'index.html')
 
-# --- LOGIQUE MÉTIER CENTRALE (ANALYSE) ---
+# ==========================================
+# LOGIQUE MÉTIER CENTRALE (ANALYSE CLASSIQUE)
+# ==========================================
 def perform_analysis(transactions_list):
+    """Détecte les abonnements récurrents classiques (Netflix, Gym, etc.)."""
     mots_cles = ["NETFLIX", "FITNESS", "GYM", "SPOTIFY", "PREMIUM", "SUBSCRIPTION", "AMAZON PRIME", "APPLE MUSIC", "DISNEY+", "CANAL+"]
     detected = []
     total_loss = 0
@@ -57,6 +60,7 @@ def perform_analysis(transactions_list):
 
     return {
         "analysis_summary": {
+            "scan_mode": "CLASSIC_BANK_AUDIT",
             "total_scanned_lines": len(transactions_list),
             "subscriptions_detected": len(detected),
             "monthly_loss_identified": round(total_loss, 2),
@@ -70,7 +74,65 @@ def perform_analysis(transactions_list):
         "detected_items_anonymized": detected
     }
 
-# --- ROUTE API UPLOAD DE FICHIERS (VERSION ULTRA-TOLÉRANTE) ---
+# ==========================================
+# LOGIQUE MÉTIER SPÉCIALISÉE (DIGITAL / WALLETS)
+# ==========================================
+def analyze_digital_platforms(transactions_list):
+    """Analyse les pertes liées aux frais cachés sur les plateformes digitales."""
+    
+    detected_losses = []
+    total_loss = 0
+    
+    # Mots-clés critiques pour identifier les pertes invisibles
+    keywords_fees = ["FEE", "CHARGE", "COMMISSION", "SPREAD", "WITHDRAWAL COST", "RETRAITS FRAIS", "DEPOT FRAIS", "SWAP RATE"]
+    keywords_inactive = ["INACTIVITY", "DORMANT ACCOUNT", "MAINTENANCE FEE"]
+    
+    for t in transactions_list:
+        label_upper = str(t.get('label', '')).upper()
+        amount = float(t.get('amount', 0))
+        
+        # Cas 1 : Frais explicites négatifs (ex: -2.50€ pour un dépôt Wave)
+        if any(kw in label_upper for kw in keywords_fees) and amount < 0:
+            category = "DIGITAL_FEE_HIDDEN"
+            detail_reason = "Frais de transaction/transfert dissimulés"
+            
+        # Cas 2 : Compte dormant/inactif (souvent ignoré par les utilisateurs)
+        elif any(kw in label_upper for kw in keywords_inactive) and amount < 0:
+            category = "ACCOUNT_DORMANCY_PENALTY"
+            detail_reason = "Pénalité d'inactivité bancaire/wallet"
+            
+        else:
+            continue # On ignore si ce n'est pas pertinent
+            
+        detected_losses.append({
+            "ref_hash": hash(label_upper) % 100000000,
+            "platform_label": t.get('label'), # Ex: "WAVE WITHDRAWAL FEE"
+            "cost_incurred": abs(amount),
+            "category_code": category,
+            "diagnosis": detail_reason
+        })
+        total_loss += abs(amount)
+
+    commission = round(total_loss * 0.18, 2) # Tarif légèrement supérieur car expertise niche
+    net_gain = round(total_loss - commission, 2)
+
+    return {
+        "analysis_summary": {
+            "scan_mode": "PLATFORM_DIGITAL_AUDIT",
+            "total_operations_scanned": len(transactions_list),
+            "hidden_costs_detected": len(detected_losses),
+            "monthly_bleed_estimated": round(total_loss / 3, 2), # Estimation mensuelle basée sur trimestre
+            "annual_leak_projected": round(total_loss * 4, 2)   # Projection annuelle agressive
+        },
+        "financial_action": {
+            "service_fee_rate": 0.18,
+            "client_recovery_potential_net": net_gain,
+            "platform_revenue_gross": commission
+        },
+        "detected_items_anonymized": detected_losses
+    }
+
+# --- ROUTE API UPLOAD DE FICHIERS (VERSION MULTI-MODES) ---
 @app.route('/analyze', methods=['POST'])
 def analyze_upload():
     if 'file' not in request.files:
@@ -128,7 +190,13 @@ def analyze_upload():
         if not transactions:
              return jsonify({"error": "Format invalide ou aucune donnée chiffrée détectée."}), 400
 
-        result_data = perform_analysis(transactions)
+        # ✅ DÉTECTION AUTOMATIQUE DU MODE D'ANALYSE
+        mode_param = request.form.get('mode', 'classic_file') # Reçoit 'digital_text' ou 'classic_file'
+        
+        if mode_param == 'digital_text':
+            result_data = analyze_digital_platforms(transactions)
+        else:
+            result_data = perform_analysis(transactions)
         
         user_id = "guest_" + str(random.randint(100000,999999))
         last_analyses_store[user_id] = result_data
@@ -138,7 +206,7 @@ def analyze_upload():
         
         return jsonify({
             "status": "success",
-            "message": f"Analyse terminée ({len(transactions)} transactions valables).",
+            "message": f"Audit [{mode_param.upper()}] terminé.",
             "data": result_data,
             "temp_user_id": user_id,
             "report_token": encoded_token
@@ -148,7 +216,7 @@ def analyze_upload():
         print(f"Erreur analyse fichier: {str(e)}")
         return jsonify({"error": f"Échec lecture fichier: {str(e)}"}), 500
 
-# --- INTÉGRATION STRIPE CHECKOUT ---
+# --- INTÉGRATION STRIPE CHECKOUT (CONSERVÉ POUR COMPATIBILITÉ FUTURE) ---
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     try:
@@ -183,7 +251,7 @@ def create_checkout_session():
         return jsonify({"error": str(e)}), 500
 
 # ==========================================
-# GÉNÉRATEUR DE RAPPORT PDF NATIF (VERSION FINALE STABLE)
+# GÉNÉRATEUR DE RAPPORT PDF NATIF (ADAPTÉ AUX 2 MODES)
 # ==========================================
 class PDF(FPDF):
     def header(self):
@@ -208,7 +276,10 @@ def generate_pdf_report(uid, analysis_data):
     summary = analysis_data['analysis_summary']
     financial_action = analysis_data['financial_action']
     detected_items = analysis_data['detected_items_anonymized']
-
+    
+    # Adaptation dynamique selon le mode scanné
+    is_digital = summary.get('scan_mode') == 'PLATFORM_DIGITAL_AUDIT'
+    
     # Infos Client & Date
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(100)
@@ -223,10 +294,16 @@ def generate_pdf_report(uid, analysis_data):
     pdf.set_xy(15, pdf.get_y() + 5)
     pdf.set_font('Arial', 'B', 12)
     
-    alert_text = (f"ALERTE CRITIQUE DETECTEE\n"
-                  f"Nous avons identifie {summary['subscriptions_detected']} abonnements recurrents non essentiels.\n"
-                  f"Perte mensuelle estimee : {summary['monthly_loss_identified']} EUR\n"
-                  f"Perte annuelle projettee : {summary['yearly_loss_projected']} EUR")
+    if is_digital:
+        alert_text = (f"AUDIT DIGITAL COMPLETE\n"
+                      f"Frais cachés detectes : {summary['hidden_costs_detected']} anomalies.\n"
+                      f"Perte mensuelle moyenne : {summary['monthly_bleed_estimated']} EUR\n"
+                      f"Gaspillage annuel projete : {summary['annual_leak_projected']} EUR")
+    else:
+        alert_text = (f"ALERTE CRITIQUE DETECTEE\n"
+                      f"Nous avons identifie {summary['subscriptions_detected']} abonnements recurrents non essentiels.\n"
+                      f"Perte mensuelle estimee : {summary['monthly_loss_identified']} EUR\n"
+                      f"Perte annuelle projettee : {summary['yearly_loss_projected']} EUR")
                   
     pdf.multi_cell(0, 6, alert_text)
     
@@ -238,7 +315,11 @@ def generate_pdf_report(uid, analysis_data):
 
     # Tableau HTML-like simulé avec cells
     col_widths = [80, 55, 55]
-    headers = ['Categorie', 'Cout Mensuel', 'Impact Annuel']
+    
+    if is_digital:
+        headers = ['Plateforme / Operation', 'Cout Cache', 'Impact Annuel']
+    else:
+        headers = ['Categorie Abonnement', 'Cout Mensuel', 'Impact Annuel']
     
     # Header Row
     pdf.set_font('Arial', 'B', 10)
@@ -252,9 +333,14 @@ def generate_pdf_report(uid, analysis_data):
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(0)
     for idx, item in enumerate(detected_items):
-        cat_name = item['category_code'].replace('_', ' ').title()
-        monthly_cost = f"-{item['amount_monthly']} EUR"
-        yearly_impact = f"~ {round(item['amount_monthly']*12, 2)} EUR"
+        if is_digital:
+            cat_name = item.get('platform_label', 'Inconnu')[:30] # Troncature pour éviter débordement
+            cost_val = f"-{item['cost_incurred']} EUR"
+            yearly_impact = f"~ {round(item['cost_incurred']*12, 2)} EUR"
+        else:
+            cat_name = item['category_code'].replace('_', ' ').title()
+            cost_val = f"-{item['amount_monthly']} EUR"
+            yearly_impact = f"~ {round(item['amount_monthly']*12, 2)} EUR"
         
         if idx % 2 == 0:
             pdf.set_fill_color(245, 245, 245) # Zebra striping light gray
@@ -263,15 +349,16 @@ def generate_pdf_report(uid, analysis_data):
             fill_style = False
             
         pdf.cell(col_widths[0], 8, cat_name, border=1, fill=fill_style)
-        pdf.cell(col_widths[1], 8, monthly_cost, border=1, fill=fill_style, align='R')
+        pdf.cell(col_widths[1], 8, cost_val, border=1, fill=fill_style, align='R')
         pdf.cell(col_widths[2], 8, yearly_impact, border=1, fill=fill_style, align='R')
         pdf.ln()
 
     # Total Line
+    total_annual = summary['annual_leak_projected'] if is_digital else summary['yearly_loss_projected']
     pdf.set_font('Arial', 'B', 11)
     pdf.set_text_color(211, 47, 47) # Rouge alerte
     pdf.cell(sum(col_widths[:-1]), 8, 'TOTAL PERDU PAR AN :', border=1, align='R')
-    pdf.cell(col_widths[-1], 8, f'{summary["yearly_loss_projected"]} EUR', border=1, align='R')
+    pdf.cell(col_widths[-1], 8, f'{total_annual} EUR', border=1, align='R')
     pdf.ln(10)
 
     # Plan d'action (Texte pur sans emoji)
@@ -281,9 +368,12 @@ def generate_pdf_report(uid, analysis_data):
     pdf.ln(2)
     pdf.set_font('Arial', '', 11)
     
-    action_text = (f"En resilient ces services superflus, vous recupererez immediatement :\n"
-                   f"+ {financial_action['client_savings_net_monthly']} EUR nets par mois dans votre poche.\n"
-                   f"Frais de service Sentinel appliques ({int(financial_action['service_fee_rate']*100)}%) : {financial_action['platform_revenue_gross']} EUR/mois.")
+    gain_net = financial_action['client_recovery_potential_net'] if is_digital else financial_action['client_savings_net_monthly']
+    fee_pct = int(financial_action['service_fee_rate']*100)
+    
+    action_text = (f"En optimisant ces flux financiers, vous recupererez immediatement :\n"
+                   f"+ {gain_net} EUR nets par mois dans votre poche.\n"
+                   f"Frais de service Sentinel appliques ({fee_pct}%) : {financial_action['platform_revenue_gross']} EUR/mois.")
                    
     pdf.multi_cell(0, 7, action_text)
 
