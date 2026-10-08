@@ -1,6 +1,6 @@
-flask==3.0.0
+flask==3.0.3
 gunicorn==21.2.0
-python-dotenv==1.0.0
+python-dotenv==1.0.1
 requests==2.31.0
-stripe==7.0.0
+stripe==8.5.0
 fpdf2==2.7.9
