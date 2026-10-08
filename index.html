@@ -12,18 +12,18 @@
         .header p { margin: 10px 0 0; opacity: 0.9; font-size: 0.95em; }
         .content { padding: 30px; transition: all 0.3s ease; }
         
+        /* Styles Sélecteur Mode */
+        .btn-mode { padding:10px 15px; border:none; border-radius:6px; background:#eee; cursor:pointer; font-size:0.9em; transition:all 0.2s; }
+        .btn-mode.active { background:#1a237e; color:white; box-shadow:0 2px 8px rgba(26,35,126,0.3); transform: translateY(-2px); }
+        .audit-zone { animation: fadeIn 0.3s ease-in-out; }
+
         /* Styles Zone Upload */
         .premium-upload-box { background: #e8f5e9; border: 2px dashed #4caf50; border-radius: 8px; padding: 25px; text-align: center; transition: all 0.3s ease; cursor: pointer; position: relative; }
         .premium-upload-box:hover { background: #c8e6c9; transform: translateY(-2px); }
         .btn-primary-large { background: #2e7d32; color: white; border: none; padding: 15px 30px; font-size: 1.1em; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; width: 100%; transition: background 0.2s; }
         .btn-primary-large:hover { background: #1b5e20; }
         
-        /* Séparateur OU */
-        .separator-or { display: flex; align-items: center; margin: 25px 0; color: #999; font-size: 0.9em; font-weight: bold; }
-        .separator-or::before, .separator-or::after { content: ""; flex: 1; border-bottom: 1px solid #ddd; }
-        .separator-or span { padding: 0 15px; }
-
-        /* Styles Saisie Manuelle */
+        /* Styles Saisie Manuelle/Digitale */
         .manual-input-area textarea { width: 100%; height: 120px; padding: 12px; border: 1px solid #ccc; border-radius: 6px; resize: vertical; font-family: monospace; font-size: 0.9em; box-sizing: border-box; }
         .manual-hint { font-size: 0.8em; color: #666; margin-top: 5px; line-height: 1.4; }
         
@@ -68,26 +68,52 @@
 
     <!-- CONTENU PRINCIPAL (Formulaire) -->
     <div class="content" id="formContent">
-        <!-- OPTION 1 : UPLOAD FICHIER -->
-        <div class="premium-upload-box" onclick="document.getElementById('bankStatementInput').click()">
-            <h3 style="margin:0 0 10px; color:#1b5e20;">🚀 Méthode Rapide (Recommandée)</h3>
-            <p style="font-size:0.9em; margin-bottom:15px;">Téléchargez votre relevé bancaire (.CSV).</p>
-            
-            <input type="file" id="bankStatementInput" accept=".csv,.txt" style="display:none;">
-            <button class="btn-primary-large" type="button">📂 Choisir mon Fichier CSV</button>
-            <div id="fileNameDisplay"></div>
+        
+        <!-- SÉLECTEUR DE MODE D'AUDIT (LES 3 PORTES) -->
+        <div style="margin-bottom:25px; text-align:center;">
+            <p style="font-weight:bold; color:#1a237e; margin-bottom:10px;">Quelle source voulez-vous auditer ?</p>
+            <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                <!-- Porte 1 : Banque Classique (Fichier) -->
+                <button id="btnModeClassicFile" class="btn-mode active" onclick="switchAuditMode('classic_file')">📂 Relevé Bancaire (.CSV)</button>
+                
+                <!-- Porte 2 : Digitale / Wallets (Texte) -->
+                <button id="btnModeDigitalText" class="btn-mode" onclick="switchAuditMode('digital_text')">💸 Frais Wallets & Trading</button>
+                
+                <!-- Porte 3 : Manuel Simple (Texte) -->
+                <button id="btnModeManual" class="btn-mode" onclick="switchAuditMode('manual_simple')">✍️ Saisie Manuelle Rapide</button>
+            </div>
+            <small id="modeHint" style="color:#666; display:block; margin-top:8px; font-size:0.85em;">Idéal pour détecter Netflix, Sport, Assurance... via fichier exporté.</small>
         </div>
 
-        <!-- SÉPARATEUR VISUEL -->
-        <div class="separator-or"><span>OÙ SAISIE MANUELLE</span></div>
-
-        <!-- OPTION 2 : SAISIE MANUELLE (Texte Brut) -->
-        <div class="manual-input-area">
-            <textarea id="manualDataInput" placeholder="Collez ici vos transactions brutes...&#10;&#10;Exemple :&#10;NETFLIX PREMIUM,-17.99&#10;CARREFOUR MARKET,-50.00&#10;SPOTIFY FAMILY,-14.99"></textarea>
-            <div class="manual-hint">💡 Format attendu : Libellé,Montant (une ligne par transaction).</div>
+        <!-- ZONE 1 : UPLOAD FICHIER CLASSIQUE (Visible par défaut) -->
+        <div id="zoneClassicFile" class="audit-zone">
+            <div class="premium-upload-box" onclick="document.getElementById('bankStatementInput').click()">
+                <h3 style="margin:0 0 10px; color:#1b5e20;">🚀 Méthode Recommandée</h3>
+                <p style="font-size:0.9em; margin-bottom:15px;">Téléchargez votre relevé bancaire récent (.CSV).</p>
+                
+                <input type="file" id="bankStatementInput" accept=".csv,.txt" style="display:none;">
+                <button class="btn-primary-large" type="button">📂 Choisir mon Fichier CSV</button>
+                <div id="fileNameDisplay"></div>
+            </div>
         </div>
 
-        <!-- BOUTONS D'ACTION -->
+        <!-- ZONE 2 : SAISIE DIGITALE / WALLET (Cachée au début) -->
+        <div id="zoneDigitalText" class="audit-zone" style="display:none;">
+            <div class="manual-input-area" style="border-color:#ff9800;">
+                <textarea id="digitalDataInput" placeholder="Collez ici vos historiques de transactions digitales...&#10;&#10;Exemple (Wave/MoMo/Binance):&#10;WAVE WITHDRAWAL FEE,-2.50&#10;BINANCE SPREAD COST,-15.00&#10;REVOLUT INACTIVITY,-1.00&#10;MTN MOMO TRANSFER CHARGE,-1.50"></textarea>
+                <div class="manual-hint" style="color:#e65100;">💡 Format attendu : Libellé,Montant (incluez les mots-clés 'FEE', 'SPREAD', 'CHARGE').</div>
+            </div>
+        </div>
+
+        <!-- ZONE 3 : SAISIE MANUELLE SIMPLE (Cachée au début) -->
+        <div id="zoneManualSimple" class="audit-zone" style="display:none;">
+            <div class="manual-input-area">
+                <textarea id="manualDataInput" placeholder="Collez ici vos abonnements connus...&#10;&#10;Exemple :&#10;NETFLIX PREMIUM,-17.99&#10;CARREFOUR MARKET,-50.00&#10;SPOTIFY FAMILY,-14.99"></textarea>
+                <div class="manual-hint">💡 Idéal si vous n'avez pas de fichier CSV sous la main.</div>
+            </div>
+        </div>
+
+        <!-- BOUTONS D'ACTION COMMUNS -->
         <div class="action-buttons">
             <button id="startAnalysisBtn" disabled class="btn-secondary-large active" style="opacity:1; cursor:pointer;">
                 ⚡ Lancer l'Analyse IA (Gratuit)
@@ -101,8 +127,8 @@
         <div id="payButtonContainer" class="pay-section">
             <h3 style="color:#d32f2f;">💰 Votre Potentiel de Gain Identifié</h3>
             <p>Pour obtenir le rapport détaillé et le plan d'action complet :</p>
-            <button id="payNowBtn" class="btn-primary-large" style="background:#d32f2f;">
-                Payer 9€ - Recevoir Mon Rapport Complet
+            <button id="payNowBtn" class="btn-primary-large" style="background:#25D366;">
+                💬 Recevoir Mon Plan D'Action Sur WhatsApp
             </button>
         </div>
 
@@ -170,26 +196,64 @@ function showSuccessScreen() {
     successView.style.display = 'block';
 }
 
-// --- LOGIQUE NORMALE DU FORMULAIRE ---
+// --- LOGIQUE NORMALE DU FORMULAIRE (VERSION 3 PORTES) ---
 function initFormLogic() {
-    const inputElement = document.getElementById('bankStatementInput');
+    const inputElement = document.getElementById('bankStatementInput'); // Zone 1
+    const digitalTextarea = document.getElementById('digitalDataInput'); // Zone 2
+    const manualTextarea = document.getElementById('manualDataInput'); // Zone 3
+    
     const fileNameDisplay = document.getElementById('fileNameDisplay');
-    const manualTextarea = document.getElementById('manualDataInput');
     const startBtn = document.getElementById('startAnalysisBtn');
     const resultsArea = document.getElementById('resultsArea');
     const paySection = document.getElementById('payButtonContainer');
     const payNowBtn = document.getElementById('payNowBtn');
+    const modeHint = document.getElementById('modeHint');
 
     let currentUid = null; 
-    let currentToken = null; // Variable pour stocker le token encodé
-    let dataSource = null; 
+    let currentToken = null; 
+    let selectedAuditMode = 'classic_file'; // Valeur par défaut
 
-    // Activation/Désactivation du bouton selon ce qui est rempli
-    function checkReadyState() {
-        const hasFile = inputElement.files.length > 0;
-        const hasManualText = manualTextarea.value.trim().length > 0;
+    // Fonctions de changement d'onglet
+    window.switchAuditMode = function(mode) {
+        selectedAuditMode = mode;
         
-        if(hasFile || hasManualText) {
+        // Mise à jour visuelle des boutons
+        document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btnMode${mode.split('_')[0].charAt(0).toUpperCase() + mode.split('_')[0].slice(1)}${mode.split('_')[1] ? mode.split('_')[1].charAt(0).toUpperCase() + mode.split('_')[1].slice(1) : ''}`).classList.add('active');
+
+        // Masquer toutes les zones
+        document.getElementById('zoneClassicFile').style.display = 'none';
+        document.getElementById('zoneDigitalText').style.display = 'none';
+        document.getElementById('zoneManualSimple').style.display = 'none';
+
+        // Afficher la zone correspondante
+        if(mode === 'classic_file') {
+            document.getElementById('zoneClassicFile').style.display = 'block';
+            modeHint.innerText = "Idéal pour détecter Netflix, Sport, Assurance... via fichier exporté.";
+        } else if(mode === 'digital_text') {
+            document.getElementById('zoneDigitalText').style.display = 'block';
+            modeHint.innerText = "Spécialisé pour analyser les frais cachés (Wave, MoMo, Binance, Crypto).";
+        } else if(mode === 'manual_simple') {
+            document.getElementById('zoneManualSimple').style.display = 'block';
+            modeHint.innerText = "Copiez-collez simplement vos lignes d'abonnements connus.";
+        }
+        
+        checkReadyState(); // Réinitialiser l'état du bouton
+    };
+
+    // Activation/Désactivation du bouton selon ce qui est rempli dans LA ZONE ACTIVE
+    function checkReadyState() {
+        let hasData = false;
+        
+        if(selectedAuditMode === 'classic_file') {
+            hasData = inputElement.files.length > 0;
+        } else if(selectedAuditMode === 'digital_text') {
+            hasData = digitalTextarea.value.trim().length > 0;
+        } else if(selectedAuditMode === 'manual_simple') {
+            hasData = manualTextarea.value.trim().length > 0;
+        }
+
+        if(hasData) {
             startBtn.disabled = false;
             startBtn.classList.add('active');
         } else {
@@ -198,58 +262,57 @@ function initFormLogic() {
         }
     }
 
-    // Écouteurs événements
+    // Écouteurs événements spécifiques
     inputElement.addEventListener('change', function() {
         if(this.files.length > 0) {
             fileNameDisplay.textContent = `✅ Fichier sélectionné : ${this.files[0].name}`;
-            manualTextarea.value = ''; 
-            dataSource = 'file';
         } else {
             fileNameDisplay.textContent = "";
         }
         checkReadyState();
     });
 
-    manualTextarea.addEventListener('input', function() {
-        if(this.value.trim().length > 0) {
-            inputElement.value = ''; 
-            fileNameDisplay.textContent = "";
-            dataSource = 'manual';
-        }
-        checkReadyState();
-    });
+    digitalTextarea.addEventListener('input', checkReadyState);
+    manualTextarea.addEventListener('input', checkReadyState);
 
-    // Logique de lancement Analyse
+    // Logique de lancement Analyse (Adaptée aux 3 modes)
     startBtn.addEventListener('click', async function() {
         this.innerText = "<span class='spinner'></span> Analyse en cours...";
         this.disabled = true;
         
         try {
             let response;
+            const formData = new FormData();
             
-            if(dataSource === 'file') {
-                const formData = new FormData();
+            // Envoi du mode choisi au serveur
+            formData.append('mode', selectedAuditMode); 
+
+            if(selectedAuditMode === 'classic_file') {
                 formData.append('file', inputElement.files[0]);
-                response = await fetch('/analyze', { method: 'POST', body: formData });
             } 
-            else if(dataSource === 'manual') {
-                const blob = new Blob([manualTextarea.value], { type: 'text/csv' });
-                const fileObj = new File([blob], "manuel.csv", { type: "text/csv" });
-                
-                const formData = new FormData();
+            else if(selectedAuditMode === 'digital_text') {
+                // Convertit le texte collé en faux fichier CSV pour le backend
+                const blob = new Blob([digitalTextarea.value], { type: 'text/csv' });
+                const fileObj = new File([blob], "wallet_audit.csv", { type: "text/csv" });
                 formData.append('file', fileObj);
-                response = await fetch('/analyze', { method: 'POST', body: formData });
+            }
+            else if(selectedAuditMode === 'manual_simple') {
+                 // Convertit le texte collé en faux fichier CSV
+                const blob = new Blob([manualTextarea.value], { type: 'text/csv' });
+                const fileObj = new File([blob], "manual_audit.csv", { type: "text/csv" });
+                formData.append('file', fileObj);
             }
 
+            response = await fetch('/analyze', { method: 'POST', body: formData });
             const data = await response.json();
             
             if(data.status === 'success') {
                 currentUid = data.temp_user_id;
-                currentToken = data.report_token; // Capture du token crucial
+                currentToken = data.report_token;
                 
-                // Stockage robuste
                 sessionStorage.setItem('audit_uid', currentUid);
                 sessionStorage.setItem('audit_token', currentToken);
+                sessionStorage.setItem('audit_yearly_loss', data.data.analysis_summary.yearly_loss_projected || data.data.analysis_summary.annual_leak_projected);
                 
                 showQuickSummary(data.data.analysis_summary); 
                 paySection.style.display = 'block';
@@ -267,40 +330,35 @@ function initFormLogic() {
     });
 
     function showQuickSummary(summary) {
+        // Adaptation dynamique du titre selon le mode
+        let title = summary.scan_mode === 'PLATFORM_DIGITAL_AUDIT' ? "📊 Audit Digital (Wallets/Fees)" : "📊 Rapport Préliminaire Gratuit";
+        let lossLabel = summary.scan_mode === 'PLATFORM_DIGITAL_AUDIT' ? summary.annual_leak_projected : summary.yearly_loss_projected;
+        
         let html = `<div class='summary-card'>
-            <h4>📊 Rapport Préliminaire Gratuit :</h4>
-            <p>Lignes scannées : <strong>${summary.total_scanned_lines}</strong></p>
-            <p>Abonnements détectés : <strong>${summary.subscriptions_detected}</strong></p>
+            <h4>${title} :</h4>
+            <p>Lignes scannées : <strong>${summary.total_scanned_lines || summary.total_operations_scanned}</strong></p>
+            <p>Anomalies détectées : <strong>${summary.subscriptions_detected || summary.hidden_costs_detected}</strong></p>
             <hr style="border:0; border-top:1px solid #ffe0b2; margin:10px 0;">
-            <p style="font-size:1.2em; margin:0;">Perte annuelle estimée : <span style='color:red;font-weight:bold;'>${summary.yearly_loss_projected} €</span></p>
+            <p style="font-size:1.2em; margin:0;">Perte annuelle estimée : <span style='color:red;font-weight:bold;'>${lossLabel} €</span></p>
             <small style="display:block; margin-top:10px; color:#666;">Validez votre audit complet ci-dessous pour recevoir le détail ligne par ligne.</small>
         </div>`;
         resultsArea.innerHTML = html;
     }
 
-    // Bouton Paiement Stripe
-    payNowBtn.addEventListener('click', async () => {
-        if(!currentUid || !currentToken) return alert("Erreur interne : Données manquantes");
-        const email = prompt("Entrez votre email pour recevoir la facture :", "");
-        if(!email || !email.includes('@')) return alert("Email invalide");
-
-        try {
-            const res = await fetch('/create-checkout-session', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                // ENVOI DU TOKEN À STRIPE POUR LA REDIRECTION
-                body: JSON.stringify({ 
-                    email: email, 
-                    temp_user_id: currentUid,
-                    report_token: currentToken 
-                })
-            });
-            const data = await res.json();
-            if(data.url) window.location.href = data.url;
-            else alert("Erreur Stripe: " + data.error);
-        } catch(e) {
-            alert("Erreur connexion serveur");
-        }
+    // Bouton Paiement Stripe -> WHATSAPP (Comme défini précédemment)
+    payNowBtn.addEventListener('click', () => {
+        if(!currentUid || !currentToken) return alert("Erreur interne");
+        
+        const lossAmount = sessionStorage.getItem('audit_yearly_loss') || "plusieurs centaines"; 
+        
+        const defaultMessage = `Bonjour Sentinel Finance ! \n\nJ'ai effectué une analyse rapide sur votre site.\n\n🚨 ALERTE DÉTECTÉE :\nPerte annuelle estimée : ${lossAmount} €\nID Dossier Unique : ${currentUid}\n\nJe souhaite recevoir mon rapport détaillé et le plan d'action pour stopper ces fuites.`;
+        
+        // ⚠️ METS TON VRAI NUMÉRO ICI (Format international sans + ni espaces)
+        const myPhoneNumber = "229XXXXXXXXX"; 
+        
+        const whatsappUrl = `https://wa.me/${myPhoneNumber}?text=${encodeURIComponent(defaultMessage)}`;
+        
+        window.open(whatsappUrl, '_blank');
     });
 }
 </script>
