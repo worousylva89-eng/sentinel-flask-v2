@@ -5,39 +5,73 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sentinel Finance - Audit Automatisé</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .container { max-width: 600px; width: 100%; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; position: relative; }
-        .header { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; padding: 30px; text-align: center; }
-        .header h1 { margin: 0; font-size: 1.8em; letter-spacing: 1px; }
-        .header p { margin: 10px 0 0; opacity: 0.9; font-size: 0.95em; }
-        .content { padding: 30px; transition: all 0.3s ease; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 10px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+        .container { max-width: 650px; width: 100%; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; position: relative; margin-top: 20px; }
+        .header { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; padding: 25px 15px; text-align: center; }
+        .header h1 { margin: 0; font-size: 1.6em; letter-spacing: 1px; }
+        .header p { margin: 8px 0 0; opacity: 0.9; font-size: 0.9em; line-height: 1.4; }
+        .content { padding: 20px; transition: all 0.3s ease; }
         
         /* Styles Sélecteur Mode */
-        .btn-mode { padding:10px 15px; border:none; border-radius:6px; background:#eee; cursor:pointer; font-size:0.9em; transition:all 0.2s; }
-        .btn-mode.active { background:#1a237e; color:white; box-shadow:0 2px 8px rgba(26,35,126,0.3); transform: translateY(-2px); }
-        .audit-zone { animation: fadeIn 0.3s ease-in-out; }
+        .mode-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .btn-mode { padding: 12px 10px; border:none; border-radius:8px; background:#f0f0f0; cursor:pointer; font-size:0.95em; font-weight:bold; transition:all 0.2s; text-align:center; color:#555; }
+        .btn-mode.active { background:#1a237e; color:white; box-shadow:0 4px 12px rgba(26,35,126,0.3); transform: translateY(-2px); }
+        .mode-hint { text-align:center; color:#666; font-size:0.85em; margin-bottom:15px; font-style:italic; }
 
-        /* Styles Zone Upload */
-        .premium-upload-box { background: #e8f5e9; border: 2px dashed #4caf50; border-radius: 8px; padding: 25px; text-align: center; transition: all 0.3s ease; cursor: pointer; position: relative; }
+        /* Zones d'affichage */
+        .audit-zone { animation: fadeIn 0.3s ease-in-out; display:none; }
+        .audit-zone.visible { display:block; }
+
+        /* Upload Box */
+        .premium-upload-box { background: #e8f5e9; border: 2px dashed #4caf50; border-radius: 10px; padding: 30px 20px; text-align: center; transition: all 0.3s ease; cursor: pointer; position: relative; }
         .premium-upload-box:hover { background: #c8e6c9; transform: translateY(-2px); }
-        .btn-primary-large { background: #2e7d32; color: white; border: none; padding: 15px 30px; font-size: 1.1em; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; width: 100%; transition: background 0.2s; }
+        .btn-primary-large { background: #2e7d32; color: white; border: none; padding: 15px 20px; font-size: 1.1em; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 15px; width: 100%; transition: background 0.2s; }
         .btn-primary-large:hover { background: #1b5e20; }
         
-        /* Styles Saisie Manuelle/Digitale */
-        .manual-input-area textarea { width: 100%; height: 120px; padding: 12px; border: 1px solid #ccc; border-radius: 6px; resize: vertical; font-family: monospace; font-size: 0.9em; box-sizing: border-box; }
-        .manual-hint { font-size: 0.8em; color: #666; margin-top: 5px; line-height: 1.4; }
+        /* Textareas Agrandies */
+        .input-wrapper { margin-bottom: 15px; }
+        textarea.audit-textarea { 
+            width: 100%; 
+            height: 180px; /* Plus haut */
+            padding: 15px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            resize: vertical; 
+            font-family: 'Courier New', Courier, monospace; 
+            font-size: 1em; /* Police plus grosse */
+            box-sizing: border-box; 
+            background: #fafafa;
+            line-height: 1.5;
+        }
+        textarea.audit-textarea:focus { outline: none; border-color: #1a237e; background: #fff; }
         
+        /* Liste des réseaux globaux */
+        .network-list { 
+            background: #fff3e0; 
+            border-left: 4px solid #ff9800; 
+            padding: 15px; 
+            margin-top: 10px; 
+            border-radius: 0 8px 8px 0;
+            font-size: 0.9em;
+            color: #e65100;
+        }
+        .network-list strong { display:block; margin-bottom:5px; color:#bf360c; }
+        .tags-cloud { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+        .tag { background:#ffe0b2; padding:2px 8px; border-radius:12px; font-size:0.8em; font-weight:bold; color:#e65100; }
+
         /* Boutons Actions */
         .action-buttons { display: grid; gap: 10px; margin-top: 20px; }
-        .btn-secondary-large { background: #ff9800; color: white; border: none; padding: 12px 25px; font-size: 1em; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary-large { background: #ff9800; color: white; border: none; padding: 15px 25px; font-size: 1.1em; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background 0.2s; opacity: 0.5; cursor: not-allowed; width: 100%; }
         .btn-secondary-large.active { opacity: 1; cursor: pointer; }
         .btn-secondary-large.active:hover { background: #f57c00; }
         
-        #fileNameDisplay { margin-top: 10px; color: #2e7d32; font-size: 0.9em; font-weight: bold; }
-        .summary-card { background: #fff3e0; border-left: 4px solid #ff9800; padding: 20px; margin-top: 20px; border-radius: 4px; text-align: left; animation: fadeIn 0.5s; }
-        .summary-card h4 { margin: 0 0 10px; color: #e65100; }
-        .summary-card p { margin: 5px 0; font-size: 0.95em; }
-        .pay-section { margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; display: none; animation: slideUp 0.5s; }
+        #fileNameDisplay { margin-top: 10px; color: #2e7d32; font-size: 0.95em; font-weight: bold; word-break: break-all;}
+        
+        /* Résultats & Paiement */
+        .summary-card { background: #fff3e0; border-left: 5px solid #ff9800; padding: 20px; margin-top: 20px; border-radius: 8px; text-align: left; animation: fadeIn 0.5s; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .summary-card h4 { margin: 0 0 10px; color: #e65100; font-size: 1.2em; }
+        .summary-card p { margin: 8px 0; font-size: 1em; }
+        .pay-section { margin-top: 25px; padding-top: 20px; border-top: 2px solid #eee; text-align: center; display: none; animation: slideUp 0.5s; }
         .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; vertical-align: middle; margin-right: 10px; }
         
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -45,71 +79,70 @@
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .footer-note { font-size: 0.8em; color: #888; margin-top: 20px; text-align: center; }
 
-        /* Style Spécifique Succès Paiement */
-        .success-container { text-align: center; padding: 40px 20px; animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .success-icon { font-size: 4em; color: #2e7d32; margin-bottom: 20px; display: block; }
-        .success-title { color: #1b5e20; font-size: 2em; margin: 0 0 15px; font-weight: bold; }
-        .success-desc { color: #555; font-size: 1.1em; margin-bottom: 30px; line-height: 1.5; }
-        .next-steps-box { background: #e8f5e9; border: 1px solid #4caf50; border-radius: 8px; padding: 20px; text-align: left; max-width: 400px; margin: 0 auto 30px; }
-        .next-steps-box h3 { margin-top: 0; color: #1b5e20; font-size: 1.1em; }
-        .btn-reset { background: #1a237e; color: white; border: none; padding: 12px 30px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
-        .btn-reset:hover { background: #283593; }
-
-        @keyframes scaleIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        /* Style WhatsApp Button */
+        .btn-whatsapp { background: #25D366 !important; color: white; }
+        .btn-whatsapp:hover { background: #1ebe57 !important; }
     </style>
 </head>
 <body>
 
 <div class="container" id="mainApp">
     <div class="header">
-        <h1>🛡️ SENTINEL FINANCE</h1>
-        <p>Détectez vos abonnements cachés et récupérez votre pouvoir d'achat.</p>
+        <h1>🛡️ SENTINEL FINANCE GLOBAL</h1>
+        <p>Détectez vos fuites d'argent partout dans le monde.<br>Banques, Mobile Money, Crypto & Trading.</p>
     </div>
 
-    <!-- CONTENU PRINCIPAL (Formulaire) -->
+    <!-- CONTENU PRINCIPAL -->
     <div class="content" id="formContent">
         
-        <!-- SÉLECTEUR DE MODE D'AUDIT (LES 3 PORTES) -->
-        <div style="margin-bottom:25px; text-align:center;">
-            <p style="font-weight:bold; color:#1a237e; margin-bottom:10px;">Quelle source voulez-vous auditer ?</p>
-            <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-                <!-- Porte 1 : Banque Classique (Fichier) -->
-                <button id="btnModeClassicFile" class="btn-mode active" onclick="switchAuditMode('classic_file')">📂 Relevé Bancaire (.CSV)</button>
-                
-                <!-- Porte 2 : Digitale / Wallets (Texte) -->
-                <button id="btnModeDigitalText" class="btn-mode" onclick="switchAuditMode('digital_text')">💸 Frais Wallets & Trading</button>
-                
-                <!-- Porte 3 : Manuel Simple (Texte) -->
-                <button id="btnModeManual" class="btn-mode" onclick="switchAuditMode('manual_simple')">✍️ Saisie Manuelle Rapide</button>
-            </div>
-            <small id="modeHint" style="color:#666; display:block; margin-top:8px; font-size:0.85em;">Idéal pour détecter Netflix, Sport, Assurance... via fichier exporté.</small>
+        <!-- SÉLECTEUR DE MODE -->
+        <div style="text-align:center; margin-bottom:15px;">
+            <p style="font-weight:bold; color:#1a237e; margin:0;">Choisissez votre source de données :</p>
         </div>
+        
+        <div class="mode-selector">
+            <button id="btnModeClassicFile" class="btn-mode active" onclick="switchAuditMode('classic_file')">📂 Relevé Bancaire<br>(CSV/PDF)</button>
+            <button id="btnModeDigitalText" class="btn-mode" onclick="switchAuditMode('digital_text')">💸 Wallets &<br>Trading Global</button>
+            <button id="btnModeManual" class="btn-mode" onclick="switchAuditMode('manual_simple')">✍️ Saisie<br>Manuelle Rapide</button>
+        </div>
+        <div id="modeHint" class="mode-hint">Idéal pour détecter Netflix, Sport, Assurance... via fichier exporté.</div>
 
-        <!-- ZONE 1 : UPLOAD FICHIER CLASSIQUE (Visible par défaut) -->
-        <div id="zoneClassicFile" class="audit-zone">
+        <!-- ZONE 1 : UPLOAD FICHIER CLASSIQUE -->
+        <div id="zoneClassicFile" class="audit-zone visible">
             <div class="premium-upload-box" onclick="document.getElementById('bankStatementInput').click()">
                 <h3 style="margin:0 0 10px; color:#1b5e20;">🚀 Méthode Recommandée</h3>
-                <p style="font-size:0.9em; margin-bottom:15px;">Téléchargez votre relevé bancaire récent (.CSV).</p>
+                <p style="font-size:0.95em; margin-bottom:15px; color:#555;">Téléchargez votre relevé bancaire récent (.CSV ou .TXT).</p>
                 
                 <input type="file" id="bankStatementInput" accept=".csv,.txt" style="display:none;">
-                <button class="btn-primary-large" type="button">📂 Choisir mon Fichier CSV</button>
+                <button class="btn-primary-large" type="button">📂 Choisir mon Fichier</button>
                 <div id="fileNameDisplay"></div>
             </div>
         </div>
 
-        <!-- ZONE 2 : SAISIE DIGITALE / WALLET (Cachée au début) -->
-        <div id="zoneDigitalText" class="audit-zone" style="display:none;">
-            <div class="manual-input-area" style="border-color:#ff9800;">
-                <textarea id="digitalDataInput" placeholder="Collez ici vos historiques de transactions digitales...&#10;&#10;Exemple (Wave/MoMo/Binance):&#10;WAVE WITHDRAWAL FEE,-2.50&#10;BINANCE SPREAD COST,-15.00&#10;REVOLUT INACTIVITY,-1.00&#10;MTN MOMO TRANSFER CHARGE,-1.50"></textarea>
-                <div class="manual-hint" style="color:#e65100;">💡 Format attendu : Libellé,Montant (incluez les mots-clés 'FEE', 'SPREAD', 'CHARGE').</div>
+        <!-- ZONE 2 : SAISIE DIGITALE / WALLET (MONDE ENTIER) -->
+        <div id="zoneDigitalText" class="audit-zone">
+            <div class="input-wrapper">
+                <textarea id="digitalDataInput" class="audit-textarea" placeholder="Collez ici vos historiques de transactions digitales...&#10;&#10;Exemple Universel :&#10;WAVE WITHDRAWAL FEE,-2.50&#10;BINANCE SPREAD COST,-15.00&#10;REVOLUT INACTIVITY,-1.00&#10;MTN MOMO TRANSFER CHARGE,-1.50&#10;PAYPAL CURRENCY CONV.,-0.99&#10;OPAY SERVICE FEE,-1.00"></textarea>
+                
+                <!-- LISTE DES RÉSEAUX SUPPORTÉS -->
+                <div class="network-list">
+                    <strong>✅ Réseaux Mondiaux Supportés :</strong>
+                    <div class="tags-cloud">
+                        <span class="tag">Africa: Wave, MoMo, Orange Money, MTN, Airtel, Opay, Palmpay, Flutterwave</span>
+                        <span class="tag">Crypto/Trade: Binance, Coinbase, Kraken, eToro, Bybit, KuCoin</span>
+                        <span class="tag">Global/Fintech: PayPal, Revolut, Wise, N26, Chime, CashApp, Venmo, Skrill</span>
+                        <span class="tag">Europe: Lydia, Qonto, Shine, Bunq, Klarna</span>
+                    </div>
+                    <small style="display:block; margin-top:8px; color:#bf360c;">💡 Astuce : Incluez les mots-clés 'FEE', 'SPREAD', 'CHARGE', 'COMMISSION' pour une détection parfaite.</small>
+                </div>
             </div>
         </div>
 
-        <!-- ZONE 3 : SAISIE MANUELLE SIMPLE (Cachée au début) -->
-        <div id="zoneManualSimple" class="audit-zone" style="display:none;">
-            <div class="manual-input-area">
-                <textarea id="manualDataInput" placeholder="Collez ici vos abonnements connus...&#10;&#10;Exemple :&#10;NETFLIX PREMIUM,-17.99&#10;CARREFOUR MARKET,-50.00&#10;SPOTIFY FAMILY,-14.99"></textarea>
-                <div class="manual-hint">💡 Idéal si vous n'avez pas de fichier CSV sous la main.</div>
+        <!-- ZONE 3 : SAISIE MANUELLE SIMPLE -->
+        <div id="zoneManualSimple" class="audit-zone">
+            <div class="input-wrapper">
+                <textarea id="manualDataInput" class="audit-textarea" placeholder="Collez ici vos abonnements connus ou dépenses récurrentes...&#10;&#10;Format simple : Libellé,Montant&#10;&#10;Exemple :&#10;NETFLIX PREMIUM,-17.99&#10;CARREFOUR MARKET,-50.00&#10;SPOTIFY FAMILY,-14.99&#10;ASSURANCE AUTO AXA,-45.00"></textarea>
+                <div class="manual-hint" style="color:#666; font-size:0.9em;">💡 Idéal si vous n'avez pas de fichier CSV sous la main. Une ligne par transaction.</div>
             </div>
         </div>
 
@@ -127,7 +160,7 @@
         <div id="payButtonContainer" class="pay-section">
             <h3 style="color:#d32f2f;">💰 Votre Potentiel de Gain Identifié</h3>
             <p>Pour obtenir le rapport détaillé et le plan d'action complet :</p>
-            <button id="payNowBtn" class="btn-primary-large" style="background:#25D366;">
+            <button id="payNowBtn" class="btn-primary-large btn-whatsapp">
                 💬 Recevoir Mon Plan D'Action Sur WhatsApp
             </button>
         </div>
@@ -137,7 +170,7 @@
         </div>
     </div>
     
-    <!-- ZONE DE SUCCÈS (Cachée par défaut, injectée via JS si paiement OK) -->
+    <!-- ZONE DE SUCCÈS (Cachée par défaut) -->
     <div id="successView" style="display:none;"></div>
 </div>
 
@@ -160,17 +193,15 @@ function showSuccessScreen() {
     
     if(formContent) formContent.style.display = 'none';
     
-    // Récupère l'UID et le Token depuis sessionStorage ou l'URL (si passé par Stripe)
+    // Récupère l'UID et le Token depuis sessionStorage ou l'URL
     const uid = sessionStorage.getItem('audit_uid') || 'unknown';
     let token = sessionStorage.getItem('audit_token');
     
-    // Sécurité : Si sessionStorage a été perdu (ex: navigation stricte), on essaie de lire l'URL actuelle
     if(!token && window.location.href.includes('token=')) {
         const params = new URLSearchParams(window.location.search);
         token = params.get('token');
     }
 
-    // ✅ MODIFICATION CRUCIALE : Lien vers /download-report au lieu de /final-report
     const reportLink = `/download-report/${uid}${token ? '?token=' + encodeURIComponent(token) : ''}`;
 
     successView.innerHTML = `
@@ -179,7 +210,6 @@ function showSuccessScreen() {
             <h2 class="success-title">Paiement Reçu !</h2>
             <p class="success-desc">Merci ! Votre transaction est validée.<br>Votre rapport PDF est prêt à être téléchargé.</p>
             
-            <!-- LIEN DE TÉLÉCHARGEMENT DIRECT -->
             <a href="${reportLink}" class="btn-primary-large" style="display:block; text-decoration:none; background:#d32f2f; margin-top:15px; font-size:1.2em; padding:20px;">
                 📥 TÉLÉCHARGER MON RAPPORT PDF
             </a>
@@ -196,7 +226,7 @@ function showSuccessScreen() {
     successView.style.display = 'block';
 }
 
-// --- LOGIQUE NORMALE DU FORMULAIRE (VERSION 3 PORTES) ---
+// --- LOGIQUE NORMALE DU FORMULAIRE (VERSION FIXÉE) ---
 function initFormLogic() {
     const inputElement = document.getElementById('bankStatementInput'); // Zone 1
     const digitalTextarea = document.getElementById('digitalDataInput'); // Zone 2
@@ -213,28 +243,35 @@ function initFormLogic() {
     let currentToken = null; 
     let selectedAuditMode = 'classic_file'; // Valeur par défaut
 
-    // Fonctions de changement d'onglet
+    // Fonctions de changement d'onglet (FIXÉE)
     window.switchAuditMode = function(mode) {
         selectedAuditMode = mode;
         
         // Mise à jour visuelle des boutons
         document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
-        document.getElementById(`btnMode${mode.split('_')[0].charAt(0).toUpperCase() + mode.split('_')[0].slice(1)}${mode.split('_')[1] ? mode.split('_')[1].charAt(0).toUpperCase() + mode.split('_')[1].slice(1) : ''}`).classList.add('active');
+        
+        // Mapping IDs corrects
+        let targetBtnId = '';
+        if(mode === 'classic_file') targetBtnId = 'btnModeClassicFile';
+        else if(mode === 'digital_text') targetBtnId = 'btnModeDigitalText';
+        else if(mode === 'manual_simple') targetBtnId = 'btnModeManual';
+        
+        if(targetBtnId) document.getElementById(targetBtnId).classList.add('active');
 
         // Masquer toutes les zones
-        document.getElementById('zoneClassicFile').style.display = 'none';
-        document.getElementById('zoneDigitalText').style.display = 'none';
-        document.getElementById('zoneManualSimple').style.display = 'none';
+        document.getElementById('zoneClassicFile').classList.remove('visible');
+        document.getElementById('zoneDigitalText').classList.remove('visible');
+        document.getElementById('zoneManualSimple').classList.remove('visible');
 
         // Afficher la zone correspondante
         if(mode === 'classic_file') {
-            document.getElementById('zoneClassicFile').style.display = 'block';
+            document.getElementById('zoneClassicFile').classList.add('visible');
             modeHint.innerText = "Idéal pour détecter Netflix, Sport, Assurance... via fichier exporté.";
         } else if(mode === 'digital_text') {
-            document.getElementById('zoneDigitalText').style.display = 'block';
+            document.getElementById('zoneDigitalText').classList.add('visible');
             modeHint.innerText = "Spécialisé pour analyser les frais cachés (Wave, MoMo, Binance, Crypto).";
         } else if(mode === 'manual_simple') {
-            document.getElementById('zoneManualSimple').style.display = 'block';
+            document.getElementById('zoneManualSimple').classList.add('visible');
             modeHint.innerText = "Copiez-collez simplement vos lignes d'abonnements connus.";
         }
         
@@ -345,7 +382,7 @@ function initFormLogic() {
         resultsArea.innerHTML = html;
     }
 
-    // Bouton Paiement Stripe -> WHATSAPP (Comme défini précédemment)
+    // Bouton Paiement Stripe -> WHATSAPP
     payNowBtn.addEventListener('click', () => {
         if(!currentUid || !currentToken) return alert("Erreur interne");
         
