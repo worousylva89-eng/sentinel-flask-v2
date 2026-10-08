@@ -385,7 +385,7 @@ def generate_pdf_report(uid, analysis_data):
     pdf.multi_cell(0, 7, action_text)
     pdf.ln(5)
 
-    # --- SECTION RECOMMANDATIONS CONCRÈTES (AJOUT CRUCIAL) ---
+    # --- SECTION RECOMMANDATIONS CONCRÈTES ---
     pdf.set_font('Arial', 'B', 13)
     pdf.set_text_color(26, 35, 126) # Bleu foncé
     pdf.cell(0, 8, '📋 Vos Prochaines Étapes Clés :', ln=True)
@@ -399,6 +399,27 @@ def generate_pdf_report(uid, analysis_data):
 4. SURVEILLEZ MENSUELLEMENT : Ré-executez cet audit chaque mois via notre plateforme pour vérifier que les fuites sont bien colmatées et découvrir de nouvelles économies.
     """
     pdf.multi_cell(0, 6, recommendations.strip())
+    pdf.ln(5)
+
+    # --- NOUVELLE SECTION : SIMULATION D'ÉCONOMIES RÉALISTES (AJOUT CRUCIAL) ---
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(46, 125, 50) # Vert positif
+    pdf.cell(0, 8, '📈 Projection de Vos Économies Réelles :', ln=True)
+    pdf.set_text_color(0)
+    pdf.ln(2)
+    
+    # Calcul simple basé sur les données détectées
+    monthly_saving = financial_action['client_savings_net_monthly'] if not is_digital else financial_action['client_recovery_potential_net']
+    
+    projection_text = f"""
+Mois 1 : Vous economisez {monthly_saving} EUR (en arretant les fuites identifiees).
+Annee 1 : Cumulatif de {round(monthly_saving * 12, 2)} EUR gardes dans votre poche.
+Investissement initial : 9 EUR.
+ROI (Retour sur Investissement) : {round((monthly_saving * 12 / 9) * 100, 0)} % !!
+
+⚠️ Rappel : Ces gains proviennent de VOS actions (resiliations/changements d'operateur), pas d'un transfert automatique de Sentinel Finance.
+    """
+    pdf.multi_cell(0, 6, projection_text.strip())
     
     pdf.ln(5)
     pdf.set_font('Arial', 'I', 9)
