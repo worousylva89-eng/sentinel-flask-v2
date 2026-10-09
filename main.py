@@ -263,7 +263,7 @@ def create_checkout_session():
         return jsonify({"error": str(e)}), 500
 
 # ==========================================
-# GÉNÉRATEUR DE RAPPORT PDF NATIF (STRATÉGIE FREEMIUM)
+# GÉNÉRATEUR DE RAPPORT PDF NATIF (SANS EMOJIS - FIX CRASH)
 # ==========================================
 class PDF(FPDF):
     def header(self):
@@ -307,7 +307,7 @@ def generate_pdf_report(uid, analysis_data):
     
     if is_digital:
         alert_text = (f"AUDIT DIGITAL COMPLETE\n"
-                      f"Frais cachés detectes : {summary['hidden_costs_detected']} anomalies.\n"
+                      f"Frais caches detectes : {summary['hidden_costs_detected']} anomalies.\n"
                       f"Perte mensuelle moyenne : {summary['monthly_bleed_estimated']} EUR\n"
                       f"Gaspillage annuel projete : {summary['annual_leak_projected']} EUR")
     else:
@@ -371,13 +371,13 @@ def generate_pdf_report(uid, analysis_data):
     # --- SECTION GAIN POTENTIEL (ACCROCHE MARKETING) ---
     pdf.set_text_color(0)
     pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, '💰 Votre Gain Potentiel Réel', ln=True)
+    pdf.cell(0, 10, 'Votre Gain Potentiel Reel', ln=True) # Emoji supprime
     pdf.ln(2)
     pdf.set_font('Arial', '', 11)
     
     gain_net = financial_action['client_recovery_potential_net'] if is_digital else financial_action['client_savings_net_monthly']
     
-    action_text = (f"Si vous arrêtez ces fuites dès aujourd'hui, vous recupererez :\n"
+    action_text = (f"Si vous arretez ces fuites des aujourd'hui, vous recupererez :\n"
                    f"+ {gain_net} EUR nets par mois dans votre poche.")
                    
     pdf.multi_cell(0, 7, action_text)
@@ -393,25 +393,25 @@ def generate_pdf_report(uid, analysis_data):
     pdf.set_xy(15, pdf.get_y() + 5)
     pdf.set_font('Arial', 'B', 13)
     pdf.set_text_color(211, 47, 47)
-    pdf.cell(0, 8, '🔒 CONTENU EXCLUSIF MASQUÉ', ln=True)
+    pdf.cell(0, 8, 'CONTENU EXCLUSIF MASQUE', ln=True) # Emoji supprime
     
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(0)
     locked_content = """
-Pour obtenir le plan d'action détaillé permettant de récupérer ces gains, veuillez contacter notre équipe via WhatsApp avec votre ID Client affiché en haut.
+Pour obtenir le plan d'action detaille permettant de recuperer ces gains, veuillez contacter notre equipe via WhatsApp avec votre ID Client affiche en haut.
 
 Le rapport COMPLET inclut :
-✅ Les numéros verts exacts pour résilier chaque abonnement.
-✅ Les scripts téléphoniques prêts à l'emploi ("Je souhaite annuler...").
-✅ La comparaison tarifaire alternative (ex: Wave vs MoMo).
-✅ Un suivi automatisé pour vérifier que les fuites sont bien colmatées.
+- Les numeros verts exacts pour resilier chaque abonnement.
+- Les scripts telephoniques prets a l'emploi ("Je souhaite annuler...").
+- La comparaison tarifaire alternative (ex: Wave vs MoMo).
+- Un suivi automatise pour verifier que les fuites sont bien colmatees.
     """
     pdf.multi_cell(0, 5, locked_content.strip())
     
     pdf.ln(5)
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(100)
-    pdf.multi_cell(0, 5, "⚠️ Important : Sentinel Finance est un outil d'audit et de conseil indépendant. Nous n'avons pas accès à vos comptes bancaires.")
+    pdf.multi_cell(0, 5, "Important : Sentinel Finance est un outil d'audit et de conseil independant. Nous n'avons pas acces a vos comptes bancaires.")
 
     # ✅ LA CORRECTION CRUCIALE POUR ÉVITER LE CRASH BYTEARRAY
     return bytes(pdf.output()) 
@@ -419,7 +419,7 @@ Le rapport COMPLET inclut :
 
 @app.route('/download-report/<uid>', methods=['GET'])
 def download_report_pdf(uid):
-    """Génère le PDF et force le téléchargement."""
+    """Genere le PDF et force le telechargement."""
     
     analysis_data = None
     
@@ -432,10 +432,10 @@ def download_report_pdf(uid):
                 decoded_bytes = base64.urlsafe_b64decode(token_param.encode())
                 analysis_data = json.loads(decoded_bytes.decode())
             except Exception as decode_err:
-                print(f"Erreur décodage token: {decode_err}")
+                print(f"Erreur decodage token: {decode_err}")
 
     if not analysis_data:
-        return "<h2>❌ Erreur : Données introuvables.</h2><a href='/'>Retour Accueil</a>", 404
+        return "<h2>Erreur : Donnees introuvables.</h2><a href='/'>Retour Accueil</a>", 404
 
     try:
         pdf_binary = generate_pdf_report(uid, analysis_data)
@@ -449,10 +449,10 @@ def download_report_pdf(uid):
         return response
 
     except Exception as e:
-        print(f"Erreur génération PDF: {str(e)}")
-        return f"<h2>💥 Crash Serveur PDF: {str(e)}</h2>", 500
+        print(f"Erreur generation PDF: {str(e)}")
+        return f"<h2>Crash Serveur PDF: {str(e)}</h2>", 500
 
-# Ancienne route conservée juste au cas où, mais on utilise maintenant /download-report
+# Ancienne route conservee juste au cas ou, mais on utilise maintenant /download-report
 @app.route('/final-report/<uid>', methods=['GET'])
 def serve_final_report_redirect(uid):
     token = request.args.get('token', '')
