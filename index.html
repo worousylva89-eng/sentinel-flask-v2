@@ -96,9 +96,20 @@
         .btn-whatsapp { background: #25D366 !important; color: white; }
         .btn-whatsapp:hover { background: #1ebe57 !important; }
         
-        /* NOUVEAU : Bouton Téléchargement Gratuit */
-        .btn-download-free { background: #1a237e !important; color: white; margin-bottom: 10px; }
-        .btn-download-free:hover { background: #0d155e !important; }
+        /* NOUVEAU : Lien Téléchargement Gratuit Stylisé */
+        .download-link-btn { 
+            background: #1a237e !important; 
+            color: white !important; 
+            margin-bottom: 10px; 
+            display: block;
+            text-decoration: none;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1em;
+            transition: background 0.2s;
+        }
+        .download-link-btn:hover { background: #0d155e !important; }
     </style>
 </head>
 <body>
@@ -192,10 +203,10 @@
             <h3 style="color:#d32f2f;">💰 Votre Potentiel de Gain Identifié</h3>
             <p>Pour obtenir le rapport détaillé et le plan d'action complet :</p>
             
-            <!-- NOUVEAU BOUTON GRATUIT -->
-            <button id="downloadFreePdfBtn" class="btn-primary-large btn-download-free">
+            <!-- CORRECTION : LIEN DIRECT AU LIEU D'UN BOUTON JS COMPLEXE -->
+            <a id="downloadFreePdfLink" href="#" class="download-link-btn" target="_blank">
                 📥 Télécharger Mon Aperçu Gratuit (PDF)
-            </button>
+            </a>
 
             <button id="payNowBtn" class="btn-primary-large btn-whatsapp">
                 💬 Acheter Le Plan D'Action Complet Sur WhatsApp
@@ -247,7 +258,7 @@ function showSuccessScreen() {
             <h2 class="success-title">Paiement Reçu !</h2>
             <p class="success-desc">Merci ! Votre transaction est validée.<br>Votre rapport PDF est prêt à être téléchargé.</p>
             
-            <a href="${reportLink}" class="btn-primary-large" style="display:block; text-decoration:none; background:#d32f2f; margin-top:15px; font-size:1.2em; padding:20px;">
+            <a href="${reportLink}" class="btn-primary-large" style="display:block; text-decoration:none; background:#d32f2f; margin-top:15px; font-size:1.2em; padding:20px;" target="_blank">
                 📥 TÉLÉCHARGER MON RAPPORT PDF COMPLET
             </a>
             
@@ -274,7 +285,7 @@ function initFormLogic() {
     const resultsArea = document.getElementById('resultsArea');
     const paySection = document.getElementById('payButtonContainer');
     const payNowBtn = document.getElementById('payNowBtn');
-    const downloadFreePdfBtn = document.getElementById('downloadFreePdfBtn'); // NOUVEAU
+    const downloadLink = document.getElementById('downloadFreePdfLink'); // NOUVEAU
     const modeHint = document.getElementById('modeHint');
 
     let currentUid = null; 
@@ -391,6 +402,12 @@ function initFormLogic() {
                 
                 showQuickSummary(data.data.analysis_summary); 
                 paySection.style.display = 'block';
+
+                // ✅ MISE À JOUR DU LIEN DE TÉLÉCHARGEMENT ICI
+                if(downloadLink && currentUid && currentToken) {
+                    const pdfUrl = `/download-report/${currentUid}?token=${encodeURIComponent(currentToken)}`;
+                    downloadLink.href = pdfUrl;
+                }
             } else {
                 alert("Erreur : " + data.error);
             }
@@ -419,22 +436,6 @@ function initFormLogic() {
         </div>`;
         resultsArea.innerHTML = html;
     }
-
-    // NOUVELLE FONCTIONNALITÉ : Téléchargement Automatique du PDF Gratuit
-    downloadFreePdfBtn.addEventListener('click', () => {
-        if(!currentUid || !currentToken) return alert("Veuillez lancer une analyse d'abord.");
-        
-        // Construit l'URL de téléchargement directement depuis le frontend
-        const pdfUrl = `/download-report/${currentUid}?token=${encodeURIComponent(currentToken)}`;
-        
-        // Force le téléchargement en ouvrant un lien invisible
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = `Aperçu_Sentinel_${currentUid}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    });
 
     // Bouton Paiement Stripe -> WHATSAPP
     payNowBtn.addEventListener('click', () => {
