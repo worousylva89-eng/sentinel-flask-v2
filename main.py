@@ -263,7 +263,7 @@ def create_checkout_session():
         return jsonify({"error": str(e)}), 500
 
 # ==========================================
-# GÉNÉRATEUR DE RAPPORT PDF NATIF (AVEC PLAN D'ACTION CONCRET)
+# GÉNÉRATEUR DE RAPPORT PDF NATIF (STRATÉGIE FREEMIUM)
 # ==========================================
 class PDF(FPDF):
     def header(self):
@@ -368,7 +368,7 @@ def generate_pdf_report(uid, analysis_data):
     pdf.cell(col_widths[-1], 8, f'{total_annual} EUR', border=1, align='R')
     pdf.ln(10)
 
-    # --- SECTION GAIN POTENTIEL ---
+    # --- SECTION GAIN POTENTIEL (ACCROCHE MARKETING) ---
     pdf.set_text_color(0)
     pdf.set_font('Arial', 'B', 14)
     pdf.cell(0, 10, '💰 Votre Gain Potentiel Réel', ln=True)
@@ -376,55 +376,42 @@ def generate_pdf_report(uid, analysis_data):
     pdf.set_font('Arial', '', 11)
     
     gain_net = financial_action['client_recovery_potential_net'] if is_digital else financial_action['client_savings_net_monthly']
-    fee_pct = int(financial_action['service_fee_rate']*100)
     
-    action_text = (f"En appliquant nos recommandations ci-dessous, vous recupererez immediatement :\n"
-                   f"+ {gain_net} EUR nets par mois dans votre poche.\n"
-                   f"(Note : Ce calcul inclut deja les frais de service Sentinel de {fee_pct}%).")
+    action_text = (f"Si vous arrêtez ces fuites dès aujourd'hui, vous recupererez :\n"
+                   f"+ {gain_net} EUR nets par mois dans votre poche.")
                    
     pdf.multi_cell(0, 7, action_text)
     pdf.ln(5)
 
-    # --- SECTION RECOMMANDATIONS CONCRÈTES ---
+    # ==============================
+    # ⚠️ LA ZONE VERROUILLÉE (FREEMIUM TRIGGER)
+    # ==============================
+    pdf.set_draw_color(211, 47, 47) # Rouge alerte
+    pdf.set_line_width(1)
+    pdf.rect(10, pdf.get_y(), 190, 60, style='D') # Cadre rouge autour de la zone manquante
+    
+    pdf.set_xy(15, pdf.get_y() + 5)
     pdf.set_font('Arial', 'B', 13)
-    pdf.set_text_color(26, 35, 126) # Bleu foncé
-    pdf.cell(0, 8, '📋 Vos Prochaines Étapes Clés :', ln=True)
+    pdf.set_text_color(211, 47, 47)
+    pdf.cell(0, 8, '🔒 CONTENU EXCLUSIF MASQUÉ', ln=True)
+    
+    pdf.set_font('Arial', '', 10)
     pdf.set_text_color(0)
-    pdf.ln(2)
-    
-    recommendations = """
-1. RESILIEZ IMMEDIATEMENT : Contactez les services listés ci-dessus pour annuler les abonnements non utilisés. Gardez la preuve de résiliation (email/capture).
-2. CHANGEZ D'OPERATEUR : Pour les frais Mobile Money élevés, comparez avec Wave, Orange Money ou les banques en ligne qui offrent souvent des retraits gratuits ou moins chers.
-3. NEGOCIEZ VOS FORFAITS : Utilisez ce rapport comme argument commercial auprès de votre fournisseur Internet/Telco pour obtenir une réduction fidélité.
-4. SURVEILLEZ MENSUELLEMENT : Ré-executez cet audit chaque mois via notre plateforme pour vérifier que les fuites sont bien colmatées et découvrir de nouvelles économies.
-    """
-    pdf.multi_cell(0, 6, recommendations.strip())
-    pdf.ln(5)
+    locked_content = """
+Pour obtenir le plan d'action détaillé permettant de récupérer ces gains, veuillez contacter notre équipe via WhatsApp avec votre ID Client affiché en haut.
 
-    # --- NOUVELLE SECTION : SIMULATION D'ÉCONOMIES RÉALISTES (AJOUT CRUCIAL) ---
-    pdf.set_font('Arial', 'B', 12)
-    pdf.set_text_color(46, 125, 50) # Vert positif
-    pdf.cell(0, 8, '📈 Projection de Vos Économies Réelles :', ln=True)
-    pdf.set_text_color(0)
-    pdf.ln(2)
-    
-    # Calcul simple basé sur les données détectées
-    monthly_saving = financial_action['client_savings_net_monthly'] if not is_digital else financial_action['client_recovery_potential_net']
-    
-    projection_text = f"""
-Mois 1 : Vous economisez {monthly_saving} EUR (en arretant les fuites identifiees).
-Annee 1 : Cumulatif de {round(monthly_saving * 12, 2)} EUR gardes dans votre poche.
-Investissement initial : 9 EUR.
-ROI (Retour sur Investissement) : {round((monthly_saving * 12 / 9) * 100, 0)} % !!
-
-⚠️ Rappel : Ces gains proviennent de VOS actions (resiliations/changements d'operateur), pas d'un transfert automatique de Sentinel Finance.
+Le rapport COMPLET inclut :
+✅ Les numéros verts exacts pour résilier chaque abonnement.
+✅ Les scripts téléphoniques prêts à l'emploi ("Je souhaite annuler...").
+✅ La comparaison tarifaire alternative (ex: Wave vs MoMo).
+✅ Un suivi automatisé pour vérifier que les fuites sont bien colmatées.
     """
-    pdf.multi_cell(0, 6, projection_text.strip())
+    pdf.multi_cell(0, 5, locked_content.strip())
     
     pdf.ln(5)
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(100)
-    pdf.multi_cell(0, 5, "⚠️ Important : Sentinel Finance est un outil d'audit et de conseil. Nous n'avons pas accès à vos comptes bancaires et ne pouvons pas effectuer de virements directs. La récupération des fonds s'effectue par vos propres actions suite à l'application de ce plan.")
+    pdf.multi_cell(0, 5, "⚠️ Important : Sentinel Finance est un outil d'audit et de conseil indépendant. Nous n'avons pas accès à vos comptes bancaires.")
 
     # ✅ LA CORRECTION CRUCIALE POUR ÉVITER LE CRASH BYTEARRAY
     return bytes(pdf.output()) 
@@ -454,7 +441,7 @@ def download_report_pdf(uid):
         pdf_binary = generate_pdf_report(uid, analysis_data)
         
         response = make_response(pdf_binary)
-        filename = f"Rapport_Sentinel_{uid}.pdf"
+        filename = f"Apercu_Sentinel_{uid}.pdf"
         
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
