@@ -95,6 +95,10 @@
         /* Style WhatsApp Button */
         .btn-whatsapp { background: #25D366 !important; color: white; }
         .btn-whatsapp:hover { background: #1ebe57 !important; }
+        
+        /* NOUVEAU : Bouton Téléchargement Gratuit */
+        .btn-download-free { background: #1a237e !important; color: white; margin-bottom: 10px; }
+        .btn-download-free:hover { background: #0d155e !important; }
     </style>
 </head>
 <body>
@@ -187,8 +191,14 @@
         <div id="payButtonContainer" class="pay-section">
             <h3 style="color:#d32f2f;">💰 Votre Potentiel de Gain Identifié</h3>
             <p>Pour obtenir le rapport détaillé et le plan d'action complet :</p>
+            
+            <!-- NOUVEAU BOUTON GRATUIT -->
+            <button id="downloadFreePdfBtn" class="btn-primary-large btn-download-free">
+                📥 Télécharger Mon Aperçu Gratuit (PDF)
+            </button>
+
             <button id="payNowBtn" class="btn-primary-large btn-whatsapp">
-                💬 Recevoir Mon Plan D'Action Sur WhatsApp
+                💬 Acheter Le Plan D'Action Complet Sur WhatsApp
             </button>
         </div>
 
@@ -238,7 +248,7 @@ function showSuccessScreen() {
             <p class="success-desc">Merci ! Votre transaction est validée.<br>Votre rapport PDF est prêt à être téléchargé.</p>
             
             <a href="${reportLink}" class="btn-primary-large" style="display:block; text-decoration:none; background:#d32f2f; margin-top:15px; font-size:1.2em; padding:20px;">
-                📥 TÉLÉCHARGER MON RAPPORT PDF
+                📥 TÉLÉCHARGER MON RAPPORT PDF COMPLET
             </a>
             
             <small style="display:block; margin-top:15px; color:#666;">
@@ -264,6 +274,7 @@ function initFormLogic() {
     const resultsArea = document.getElementById('resultsArea');
     const paySection = document.getElementById('payButtonContainer');
     const payNowBtn = document.getElementById('payNowBtn');
+    const downloadFreePdfBtn = document.getElementById('downloadFreePdfBtn'); // NOUVEAU
     const modeHint = document.getElementById('modeHint');
 
     let currentUid = null; 
@@ -409,13 +420,29 @@ function initFormLogic() {
         resultsArea.innerHTML = html;
     }
 
+    // NOUVELLE FONCTIONNALITÉ : Téléchargement Automatique du PDF Gratuit
+    downloadFreePdfBtn.addEventListener('click', () => {
+        if(!currentUid || !currentToken) return alert("Veuillez lancer une analyse d'abord.");
+        
+        // Construit l'URL de téléchargement directement depuis le frontend
+        const pdfUrl = `/download-report/${currentUid}?token=${encodeURIComponent(currentToken)}`;
+        
+        // Force le téléchargement en ouvrant un lien invisible
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = `Aperçu_Sentinel_${currentUid}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
     // Bouton Paiement Stripe -> WHATSAPP
     payNowBtn.addEventListener('click', () => {
         if(!currentUid || !currentToken) return alert("Erreur interne");
         
         const lossAmount = sessionStorage.getItem('audit_yearly_loss') || "plusieurs centaines"; 
         
-        const defaultMessage = `Bonjour Sentinel Finance ! \n\nJ'ai effectué une analyse rapide sur votre site.\n\n🚨 ALERTE DÉTECTÉE :\nPerte annuelle estimée : ${lossAmount} €\nID Dossier Unique : ${currentUid}\n\nJe souhaite recevoir mon rapport détaillé et le plan d'action pour stopper ces fuites.`;
+        const defaultMessage = `Bonjour Sentinel Finance ! \n\nMon audit révèle une perte potentielle de : ${lossAmount} €/an.\n\nJe veux acheter mon RAPPORT D'AUDIT COMPLET.\n\n⚠️ Je comprends que cet outil m'identifie MES FUITES D'ARGENT et me donne un PLAN D'ACTION PERSONNALISÉ pour les arrêter moi-même (résiliations, changements d'opérateurs, etc.). Vous ne transférez pas d'argent directement sur mon compte.\n\nEnvoyez-moi le lien de paiement sécurisé svp.`;
         
         // ⚠️ METS TON VRAI NUMÉRO ICI (Format international sans + ni espaces)
         const myPhoneNumber = "2290167320139"; 
