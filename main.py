@@ -240,8 +240,8 @@ def create_crypto_charge():
         payment_type = data.get('payment_type', 'simple') # 'simple' ou 'advanced'
         pay_currency = data.get('pay_currency', 'usdttrc20').lower()
         
-        # Montant fixé à 14.99€ pour éviter l'erreur "amountTo is too small" de NowPayments
-        price_amount = 14.99 
+        # CORRECTION CRUCIALE : Montant fixé à 19.99€ pour être AU-DESSUS du minimum de TOUTES les cryptos (ex: BTC)
+        price_amount = 19.99 
         
         # Liste des cryptos autorisées pour la version avancée (fallback sur USDT TRC20)
         allowed_currencies = ['btc', 'eth', 'usdttrc20', 'usdcter20', 'usdc', 'bnb', 'ltc', 'xrp', 'trx']
@@ -518,9 +518,9 @@ def generate_pdf_report(uid, analysis_data, is_paid=False):
         pdf.cell(0, 8, 'CONTENU EXCLUSIF MASQUE', ln=True)
         pdf.set_font('Arial', '', 10)
         pdf.set_text_color(0)
-        # MISE À JOUR DU PRIX DANS LE PDF
+        # MISE À JOUR DU PRIX DANS LE PDF (19.99 EUR)
         locked_content = """
-Pour obtenir le plan d'action detaille permettant de recuperer ces gains, veuillez payer 14.99 EUR via crypto-monnaie.
+Pour obtenir le plan d'action detaille permettant de recuperer ces gains, veuillez payer 19.99 EUR via crypto-monnaie.
 
 Le rapport COMPLET inclut :
 - Les numeros verts exacts pour resilier chaque abonnement.
