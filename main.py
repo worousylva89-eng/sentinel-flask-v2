@@ -8,21 +8,29 @@ import csv
 import io
 import base64
 from datetime import datetime, timedelta
-import stripe
-from fpdf import FPDF # Importation de la lib PDF
+from fpdf import FPDF
+import coinbase_commerce
+from coinbase_commerce.client import Client
+from coinbase_commerce.error import HTTPError
+from coinbase_commerce.webhook import WebhookInvalidPayload, WebhookVerificationError
 
 # --- CONFIGURATION ENVIRONNEMENT ---
 load_dotenv()
 
-# Clés Stripe
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-if STRIPE_SECRET_KEY:
-    stripe.api_key = STRIPE_SECRET_KEY
+# Clés Coinbase Commerce (remplace Stripe)
+COINBASE_API_KEY = os.getenv("COINBASE_API_KEY")
+COINBASE_WEBHOOK_SECRET = os.getenv("COINBASE_WEBHOOK_SECRET")
+
+# Initialisation du client Coinbase
+coinbase_client = None
+if COINBASE_API_KEY:
+    coinbase_client = Client(api_key=COINBASE_API_KEY)
 
 app = Flask(__name__, static_folder='.')
 
-# --- STOCKAGE TEMPORAIRE DES ANALYSES (Backup local) ---
+# --- STOCKAGE TEMPORAIRE DES ANALYSES + PAIEMENTS ---
 last_analyses_store = {} 
+payments_store = {}  # Nouveau: stockage des paiements
 
 @app.route('/')
 def home():
@@ -228,39 +236,132 @@ def analyze_upload():
         print(f"Erreur analyse fichier: {str(e)}")
         return jsonify({"error": f"Échec lecture fichier: {str(e)}"}), 500
 
-# --- INTÉGRATION STRIPE CHECKOUT (CONSERVÉ POUR COMPATIBILITÉ FUTURE) ---
-@app.route('/create-checkout-session', methods=['POST'])
-def create_checkout_session():
+# ==========================================
+#  NOUVELLE INTÉGRATION COINBASE COMMERCE (CRYPTO)
+# ==========================================
+
+@app.route('/create-crypto-charge', methods=['POST'])
+def create_crypto_charge():
+    """Crée une charge de paiement crypto via Coinbase Commerce."""
     try:
         data = request.get_json()
         customer_email = data.get('email', 'client@example.com')
-        temp_user_id = data.get('temp_user_id', 'unknown') 
-        report_token = data.get('report_token', '') 
+        temp_user_id = data.get('temp_user_id', 'unknown')
+        report_token = data.get('report_token', '')
         
-        session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{
-                'price_data': {
-                    'currency': 'eur',
-                    'product_data': {
-                        'name': 'Audit Financier Sentinel - Rapport Complet',
-                        'description': 'Analyse IA de vos abonnements cachés + Plan d\'action personnalisé.',
-                    },
-                    'unit_amount': 900, 
-                },
-                'quantity': 1,
-            }],
-            mode='payment',
-            success_url=f"https://sentinel-flask-v2-2.onrender.com/?status=paid&uid={temp_user_id}&token={report_token}", 
-            cancel_url="https://sentinel-flask-v2-2.onrender.com/",
-            metadata={'customer_email': customer_email, 'internal_uid': temp_user_id}
+        if not coinbase_client:
+            return jsonify({"error": "Coinbase Commerce non configuré. Ajoutez COINBASE_API_KEY dans .env"}), 500
+        
+        # Créer la charge Coinbase
+        charge_data = {
+            'name': 'Sentinel Finance - Rapport Complet',
+            'description': 'Audit financier complet + Plan d\'action détaillé pour récupérer vos pertes',
+            'pricing_type': 'fixed_price',
+            'local_price': {
+                'amount': '9.99',
+                'currency': 'EUR'
+            },
+            'metadata': {
+                'customer_email': customer_email,
+                'internal_uid': temp_user_id,
+                'report_token': report_token
+            }
+        }
+        
+        charge = coinbase_client.charge.create(**charge_data)
+        
+        # Stocker les infos du paiement
+        payments_store[charge['code']] = {
+            'user_id': temp_user_id,
+            'report_token': report_token,
+            'status': 'pending',
+            'created_at': datetime.now().isoformat(),
+            'amount': '9.99 EUR'
+        }
+        
+        return jsonify({
+            "status": "success",
+            "charge_code": charge['code'],
+            "hosted_url": charge['hosted_url'],
+            "message": "Redirection vers le paiement crypto..."
+        })
+
+    except HTTPError as e:
+        print(f"Coinbase HTTP Error: {e}")
+        return jsonify({"error": f"Erreur création charge: {str(e)}"}), 500
+    except Exception as e:
+        print(f"Coinbase Error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/webhook', methods=['POST'])
+def handle_webhook():
+    """Reçoit les notifications de paiement de Coinbase Commerce."""
+    try:
+        if not COINBASE_WEBHOOK_SECRET:
+            return jsonify({"error": "Webhook secret non configuré"}), 500
+        
+        # Vérifier la signature du webhook
+        signature = request.headers.get('X-Cc-Webhook-Signature')
+        if not signature:
+            return jsonify({"error": "Signature manquante"}), 400
+        
+        payload = request.get_data()
+        event = coinbase_commerce.Webhook.verify_signature(
+            payload,
+            signature,
+            COINBASE_WEBHOOK_SECRET
         )
         
-        return jsonify({"url": session.url})
+        # Traiter l'événement
+        event_type = event.get('type')
+        event_data = event.get('data', {})
+        charge_code = event_data.get('code')
+        
+        print(f"Webhook reçu: {event_type} pour charge {charge_code}")
+        
+        if charge_code in payments_store:
+            payment_info = payments_store[charge_code]
+            
+            if event_type == 'charge:confirmed':
+                payment_info['status'] = 'paid'
+                payment_info['paid_at'] = datetime.now().isoformat()
+                print(f"✅ Paiement confirmé pour {charge_code}")
+                
+            elif event_type == 'charge:failed':
+                payment_info['status'] = 'failed'
+                print(f" Paiement échoué pour {charge_code}")
+        
+        return jsonify({"status": "success"}), 200
 
+    except WebhookVerificationError as e:
+        print(f"Webhook verification error: {e}")
+        return jsonify({"error": "Signature invalide"}), 400
     except Exception as e:
-        print(f"Stripe Error: {str(e)}")
+        print(f"Webhook error: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/check-payment/<charge_code>', methods=['GET'])
+def check_payment_status(charge_code):
+    """Vérifie le statut d'un paiement (polling côté client)."""
+    if charge_code not in payments_store:
+        return jsonify({"status": "not_found"}), 404
+    
+    payment_info = payments_store[charge_code]
+    
+    if payment_info['status'] == 'paid':
+        # Générer un lien sécurisé vers le rapport
+        report_token = payment_info.get('report_token', '')
+        user_id = payment_info.get('user_id', 'unknown')
+        
+        return jsonify({
+            "status": "paid",
+            "report_url": f"/download-report/{user_id}?token={report_token}&paid=true"
+        })
+    else:
+        return jsonify({
+            "status": payment_info['status'],
+            "message": "Paiement en attente..."
+        })
 
 # ==========================================
 # GÉNÉRATEUR DE RAPPORT PDF NATIF (SANS EMOJIS - FIX CRASH)
@@ -280,7 +381,7 @@ class PDF(FPDF):
         self.set_text_color(128)
         self.cell(0, 10, f'Sentinel Finance © {datetime.now().year} | Page {self.page_no()}/{{nb}}', align='C')
 
-def generate_pdf_report(uid, analysis_data):
+def generate_pdf_report(uid, analysis_data, is_paid=False):
     pdf = PDF()
     pdf.alias_nb_pages()
     pdf.add_page()
@@ -371,7 +472,7 @@ def generate_pdf_report(uid, analysis_data):
     # --- SECTION GAIN POTENTIEL (ACCROCHE MARKETING) ---
     pdf.set_text_color(0)
     pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, 'Votre Gain Potentiel Reel', ln=True) # Emoji supprime
+    pdf.cell(0, 10, 'Votre Gain Potentiel Reel', ln=True)
     pdf.ln(2)
     pdf.set_font('Arial', '', 11)
     
@@ -384,29 +485,70 @@ def generate_pdf_report(uid, analysis_data):
     pdf.ln(5)
 
     # ==============================
-    # ⚠️ LA ZONE VERROUILLÉE (FREEMIUM TRIGGER)
+    # ️ LA ZONE VERROUILLÉE (FREEMIUM TRIGGER)
     # ==============================
-    pdf.set_draw_color(211, 47, 47) # Rouge alerte
-    pdf.set_line_width(1)
-    pdf.rect(10, pdf.get_y(), 190, 60, style='D') # Cadre rouge autour de la zone manquante
     
-    pdf.set_xy(15, pdf.get_y() + 5)
-    pdf.set_font('Arial', 'B', 13)
-    pdf.set_text_color(211, 47, 47)
-    pdf.cell(0, 8, 'CONTENU EXCLUSIF MASQUE', ln=True) # Emoji supprime
-    
-    pdf.set_font('Arial', '', 10)
-    pdf.set_text_color(0)
-    locked_content = """
-Pour obtenir le plan d'action detaille permettant de recuperer ces gains, veuillez contacter notre equipe via WhatsApp avec votre ID Client affiche en haut.
+    if not is_paid:
+        # Version GRATUITE - Contenu masqué
+        pdf.set_draw_color(211, 47, 47) # Rouge alerte
+        pdf.set_line_width(1)
+        pdf.rect(10, pdf.get_y(), 190, 60, style='D') # Cadre rouge autour de la zone manquante
+        
+        pdf.set_xy(15, pdf.get_y() + 5)
+        pdf.set_font('Arial', 'B', 13)
+        pdf.set_text_color(211, 47, 47)
+        pdf.cell(0, 8, 'CONTENU EXCLUSIF MASQUE', ln=True)
+        
+        pdf.set_font('Arial', '', 10)
+        pdf.set_text_color(0)
+        locked_content = """
+Pour obtenir le plan d'action detaille permettant de recuperer ces gains, veuillez payer via crypto-monnaie (Bitcoin, Ethereum, USDC, etc.).
 
 Le rapport COMPLET inclut :
 - Les numeros verts exacts pour resilier chaque abonnement.
 - Les scripts telephoniques prets a l'emploi ("Je souhaite annuler...").
 - La comparaison tarifaire alternative (ex: Wave vs MoMo).
 - Un suivi automatise pour verifier que les fuites sont bien colmatees.
-    """
-    pdf.multi_cell(0, 5, locked_content.strip())
+- Dashboard interactif pour gerer vos economies.
+        """
+        pdf.multi_cell(0, 5, locked_content.strip())
+    else:
+        # Version PAYÉE - Contenu débloqué
+        pdf.set_draw_color(76, 175, 80) # Vert succès
+        pdf.set_line_width(1)
+        pdf.rect(10, pdf.get_y(), 190, 75, style='D') # Cadre vert
+        
+        pdf.set_xy(15, pdf.get_y() + 5)
+        pdf.set_font('Arial', 'B', 13)
+        pdf.set_text_color(76, 175, 80)
+        pdf.cell(0, 8, 'RAPPORT COMPLET DEBLOQUE - PLAN D\'ACTION', ln=True)
+        
+        pdf.set_font('Arial', '', 10)
+        pdf.set_text_color(0)
+        
+        # Liste détaillée des actions
+        unlocked_content = "\n".join([
+            "📋 PLAN D'ACTION PERSONNALISE :",
+            "",
+            "1. RESILIATION IMMEDIATE (Scripts prêts):",
+        ])
+        
+        for idx, item in enumerate(detected_items[:5], 1):
+            if is_digital:
+                service = item.get('platform_label', 'Service')[:25]
+            else:
+                service = item['category_code'].replace('_', ' ').title()
+            unlocked_content += f"\n   {idx}. {service} - Contact: support@service.com"
+        
+        unlocked_content += "\n\n2. ALTERNATIVES ECONOMIQUES :"
+        unlocked_content += "\n   - Comparatif complet des fournisseurs"
+        unlocked_content += "\n   - Liens directs vers les offres moins chères"
+        
+        unlocked_content += "\n\n3. SUIVI AUTOMATISE :"
+        unlocked_content += "\n   - Accès au dashboard Sentinel"
+        unlocked_content += "\n   - Alertes mensuelles sur vos dépenses"
+        
+        pdf.multi_cell(0, 5, unlocked_content)
     
     pdf.ln(5)
     pdf.set_font('Arial', 'I', 9)
@@ -422,6 +564,12 @@ def download_report_pdf(uid):
     """Genere le PDF et force le telechargement."""
     
     analysis_data = None
+    is_paid = False
+    
+    # Vérifier si c'est un rapport payé
+    paid_param = request.args.get('paid', 'false')
+    if paid_param == 'true':
+        is_paid = True
     
     if uid in last_analyses_store:
         analysis_data = last_analyses_store[uid]
@@ -438,7 +586,7 @@ def download_report_pdf(uid):
         return "<h2>Erreur : Donnees introuvables.</h2><a href='/'>Retour Accueil</a>", 404
 
     try:
-        pdf_binary = generate_pdf_report(uid, analysis_data)
+        pdf_binary = generate_pdf_report(uid, analysis_data, is_paid=is_paid)
         
         response = make_response(pdf_binary)
         filename = f"Apercu_Sentinel_{uid}.pdf"
@@ -452,7 +600,7 @@ def download_report_pdf(uid):
         print(f"Erreur generation PDF: {str(e)}")
         return f"<h2>Crash Serveur PDF: {str(e)}</h2>", 500
 
-# Ancienne route conservee juste au cas ou, mais on utilise maintenant /download-report
+# Ancienne route conservee juste au cas ou
 @app.route('/final-report/<uid>', methods=['GET'])
 def serve_final_report_redirect(uid):
     token = request.args.get('token', '')
@@ -461,4 +609,4 @@ def serve_final_report_redirect(uid):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=True)
