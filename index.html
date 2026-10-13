@@ -429,6 +429,7 @@ function initFormLogic() {
         resultsArea.innerHTML = html;
     }
 
+    // LOGIQUE DE PAIEMENT AMÉLIORÉE AVEC DÉBOGAGE
     payNowBtn.addEventListener('click', async function() {
         if(!currentUid || !currentToken) return alert("Veuillez d'abord lancer l'analyse.");
         
@@ -452,19 +453,33 @@ function initFormLogic() {
                 })
             });
             
-            const data = await response.json();
+            // Lecture brute de la réponse pour voir l'erreur exacte si ce n'est pas du JSON valide
+            const responseText = await response.text();
+            console.log("Réponse brute du serveur:", responseText);
+            
+            let data;
+            try {
+                data = responseText ? JSON.parse(responseText) : {};
+            } catch (e) {
+                console.error("Erreur de parsing JSON:", e);
+                alert("Erreur serveur (format inattendu) :\n" + response.status + " - " + responseText.substring(0, 200));
+                this.innerHTML = originalText;
+                this.disabled = false;
+                return;
+            }
             
             if(data.status === 'success' && data.invoice_url) {
                 sessionStorage.setItem('payment_id', data.payment_id);
                 window.location.href = data.invoice_url;
             } else {
-                alert("Erreur lors de la création du paiement: " + (data.error || "Inconnue"));
+                console.error("Erreur détaillée renvoyée par le serveur:", data);
+                alert("Erreur lors de la création du paiement:\n" + (data.error || "Erreur inconnue - Vérifiez la console du navigateur (F12)"));
                 this.innerHTML = originalText;
                 this.disabled = false;
             }
         } catch(err) {
-            console.error(err);
-            alert("Problème réseau. Réessayez.");
+            console.error("Erreur réseau complète:", err);
+            alert("Problème réseau. Réessayez. Détails: " + err.message);
             this.innerHTML = originalText;
             this.disabled = false;
         }
