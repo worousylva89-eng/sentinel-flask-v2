@@ -12,68 +12,35 @@
         .header p { margin: 8px 0 0; opacity: 0.9; font-size: 0.9em; line-height: 1.4; }
         .content { padding: 20px; transition: all 0.3s ease; }
         
-        /* Styles Sélecteur Mode */
         .mode-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
         .btn-mode { padding: 12px 10px; border:none; border-radius:8px; background:#f0f0f0; cursor:pointer; font-size:0.95em; font-weight:bold; transition:all 0.2s; text-align:center; color:#555; }
         .btn-mode.active { background:#1a237e; color:white; box-shadow:0 4px 12px rgba(26,35,126,0.3); transform: translateY(-2px); }
         .mode-hint { text-align:center; color:#666; font-size:0.85em; margin-bottom:15px; font-style:italic; }
 
-        /* Zones d'affichage */
         .audit-zone { animation: fadeIn 0.3s ease-in-out; display:none; }
         .audit-zone.visible { display:block; }
 
-        /* Upload Box */
         .premium-upload-box { background: #e8f5e9; border: 2px dashed #4caf50; border-radius: 10px; padding: 30px 20px; text-align: center; transition: all 0.3s ease; cursor: pointer; position: relative; }
         .premium-upload-box:hover { background: #c8e6c9; transform: translateY(-2px); }
         .btn-primary-large { background: #2e7d32; color: white; border: none; padding: 15px 20px; font-size: 1.1em; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 15px; width: 100%; transition: background 0.2s; }
         .btn-primary-large:hover { background: #1b5e20; }
         .btn-primary-large:disabled { background: #a5d6a7; cursor: not-allowed; }
         
-        /* Textareas Agrandies */
         .input-wrapper { margin-bottom: 15px; }
-        textarea.audit-textarea { 
-            width: 100%; 
-            height: 180px; 
-            padding: 15px; 
-            border: 2px solid #ddd; 
-            border-radius: 8px; 
-            resize: vertical; 
-            font-family: 'Courier New', Courier, monospace; 
-            font-size: 1em; 
-            box-sizing: border-box; 
-            background: #fafafa;
-            line-height: 1.5;
-        }
+        textarea.audit-textarea { width: 100%; height: 180px; padding: 15px; border: 2px solid #ddd; border-radius: 8px; resize: vertical; font-family: 'Courier New', Courier, monospace; font-size: 1em; box-sizing: border-box; background: #fafafa; line-height: 1.5; }
         textarea.audit-textarea:focus { outline: none; border-color: #1a237e; background: #fff; }
         
-        /* Liste des réseaux globaux */
-        .network-list { 
-            background: #fff3e0; 
-            border-left: 4px solid #ff9800; 
-            padding: 15px; 
-            margin-top: 10px; 
-            border-radius: 0 8px 8px 0;
-            font-size: 0.9em;
-            color: #e65100;
-        }
+        .network-list { background: #fff3e0; border-left: 4px solid #ff9800; padding: 15px; margin-top: 10px; border-radius: 0 8px 8px 0; font-size: 0.9em; color: #e65100; }
         .network-list strong { display:block; margin-bottom:5px; color:#bf360c; }
         .tags-cloud { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
         .tag { background:#ffe0b2; padding:2px 8px; border-radius:12px; font-size:0.8em; font-weight:bold; color:#e65100; }
 
-        /* Guide Pas-à-Pas */
-        .guide-box {
-            background: #e3f2fd;
-            border-left: 4px solid #2196f3;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 0 8px 8px 0;
-        }
+        .guide-box { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin-bottom: 15px; border-radius: 0 8px 8px 0; }
         .guide-box h4 { margin: 0 0 10px; color: #0d47a1; font-size: 1em; }
         .guide-box ol { margin: 0; padding-left: 20px; line-height: 1.6; font-size: 0.9em; color: #333; }
         .guide-box li strong { color: #1a237e; }
         .highlight-red { color: #d32f2f; font-weight: bold; }
 
-        /* Boutons Actions */
         .action-buttons { display: grid; gap: 10px; margin-top: 20px; }
         .btn-secondary-large { background: #ff9800; color: white; border: none; padding: 15px 25px; font-size: 1.1em; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background 0.2s; opacity: 0.5; cursor: not-allowed; width: 100%; }
         .btn-secondary-large.active { opacity: 1; cursor: pointer; }
@@ -81,7 +48,6 @@
         
         #fileNameDisplay { margin-top: 10px; color: #2e7d32; font-size: 0.95em; font-weight: bold; word-break: break-all;}
         
-        /* Résultats & Paiement */
         .summary-card { background: #fff3e0; border-left: 5px solid #ff9800; padding: 20px; margin-top: 20px; border-radius: 8px; text-align: left; animation: fadeIn 0.5s; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .summary-card h4 { margin: 0 0 10px; color: #e65100; font-size: 1.2em; }
         .summary-card p { margin: 8px 0; font-size: 1em; }
@@ -94,22 +60,9 @@
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .footer-note { font-size: 0.8em; color: #888; margin-top: 20px; text-align: center; }
         
-        /* NOUVEAU : Lien Téléchargement Gratuit Stylisé */
-        .download-link-btn { 
-            background: #1a237e !important; 
-            color: white !important; 
-            margin-bottom: 10px; 
-            display: block;
-            text-decoration: none;
-            padding: 15px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 1.1em;
-            transition: background 0.2s;
-        }
+        .download-link-btn { background: #1a237e !important; color: white !important; margin-bottom: 10px; display: block; text-decoration: none; padding: 15px 20px; border-radius: 8px; font-weight: bold; font-size: 1.1em; transition: background 0.2s; }
         .download-link-btn:hover { background: #0d155e !important; }
 
-        /* NOUVEAU : Bouton Crypto Premium */
         .btn-crypto-pay {
             background: linear-gradient(135deg, #6f42c1 0%, #1a237e 100%) !important;
             color: white !important;
@@ -119,6 +72,8 @@
             background: linear-gradient(135deg, #5a32a3 0%, #0d155e 100%) !important;
             transform: translateY(-1px);
         }
+        .crypto-badges { display: flex; justify-content: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .crypto-badge { background: #f0f0f0; padding: 4px 10px; border-radius: 12px; font-size: 0.75em; color: #555; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -129,10 +84,7 @@
         <p>Détectez vos fuites d'argent partout dans le monde.<br>Banques, Mobile Money, Crypto & Trading.</p>
     </div>
 
-    <!-- CONTENU PRINCIPAL -->
     <div class="content" id="formContent">
-        
-        <!-- SÉLECTEUR DE MODE -->
         <div style="text-align:center; margin-bottom:15px;">
             <p style="font-weight:bold; color:#1a237e; margin:0;">Choisissez votre source de données :</p>
         </div>
@@ -144,19 +96,16 @@
         </div>
         <div id="modeHint" class="mode-hint">Idéal pour détecter Netflix, Sport, Assurance... via fichier exporté.</div>
 
-        <!-- ZONE 1 : UPLOAD FICHIER CLASSIQUE -->
         <div id="zoneClassicFile" class="audit-zone visible">
             <div class="premium-upload-box" onclick="document.getElementById('bankStatementInput').click()">
                 <h3 style="margin:0 0 10px; color:#1b5e20;">🚀 Méthode Recommandée</h3>
                 <p style="font-size:0.95em; margin-bottom:15px; color:#555;">Téléchargez votre relevé bancaire récent (.CSV ou .TXT).</p>
-                
                 <input type="file" id="bankStatementInput" accept=".csv,.txt" style="display:none;">
                 <button class="btn-primary-large" type="button">📂 Choisir mon Fichier</button>
                 <div id="fileNameDisplay"></div>
             </div>
         </div>
 
-        <!-- ZONE 2 : SAISIE DIGITALE / WALLET (MONDE ENTIER) -->
         <div id="zoneDigitalText" class="audit-zone">
             <div class="guide-box">
                 <h4>📱 Comment récupérer vos frais cachés ?</h4>
@@ -168,10 +117,8 @@
                     <li><strong>Collez ici ci-dessous :</strong></li>
                 </ol>
             </div>
-
             <div class="input-wrapper">
                 <textarea id="digitalDataInput" class="audit-textarea" placeholder="Exemple MTN MoMo :&#10;Retrait Cash,-500.00&#10;Frais Service Retrait,-2.50&#10;Transfert Ami,-100.00&#10;Commission Transfert,-1.00&#10;&#10;Exemple Binance :&#10;Trading Fee BTC/USDT,-0.05&#10;Withdrawal Cost ETH,-1.20"></textarea>
-                
                 <div class="network-list">
                     <strong>✅ Où trouver ces infos ?</strong>
                     <div class="tags-cloud">
@@ -186,25 +133,21 @@
             </div>
         </div>
 
-        <!-- ZONE 3 : SAISIE MANUELLE SIMPLE -->
         <div id="zoneManualSimple" class="audit-zone">
             <div class="input-wrapper">
                 <textarea id="manualDataInput" class="audit-textarea" placeholder="Collez ici vos abonnements connus ou dépenses récurrentes...&#10;&#10;Format simple : Libellé,Montant&#10;&#10;Exemple :&#10;NETFLIX PREMIUM,-17.99&#10;CARREFOUR MARKET,-50.00&#10;SPOTIFY FAMILY,-14.99&#10;ASSURANCE AUTO AXA,-45.00"></textarea>
-                <div class="manual-hint" style="color:#666; font-size:0.9em; margin-top:10px;">💡 Idéal si vous n'avez pas de fichier CSV sous la main. Une ligne par transaction.</div>
+                <div style="color:#666; font-size:0.9em; margin-top:10px;">💡 Idéal si vous n'avez pas de fichier CSV sous la main. Une ligne par transaction.</div>
             </div>
         </div>
 
-        <!-- BOUTONS D'ACTION COMMUNS -->
         <div class="action-buttons">
             <button id="startAnalysisBtn" disabled class="btn-secondary-large active" style="opacity:1; cursor:pointer;">
                 ⚡ Lancer l'Analyse IA (Gratuit)
             </button>
         </div>
 
-        <!-- AFFICHAGE DU RÉSULTAT PRÉLIMINAIRE -->
         <div id="resultsArea"></div>
 
-        <!-- SECTION PAIEMENT CRYPTO (REMPLACE WHATSAPP) -->
         <div id="payButtonContainer" class="pay-section">
             <h3 style="color:#d32f2f;">💰 Votre Potentiel de Gain Identifié</h3>
             <p>Pour obtenir le rapport détaillé, les scripts de résiliation et le plan d'action complet :</p>
@@ -216,8 +159,17 @@
             <button id="payNowBtn" class="btn-primary-large btn-crypto-pay">
                 🔓 Débloquer le Rapport Complet - 9.99€ (Crypto)
             </button>
+            
+            <div class="crypto-badges">
+                <span class="crypto-badge">₿ Bitcoin</span>
+                <span class="crypto-badge">Ξ Ethereum</span>
+                <span class="crypto-badge">💵 USDT</span>
+                <span class="crypto-badge">🟢 USDC</span>
+                <span class="crypto-badge">🟡 BNB</span>
+            </div>
+            
             <p style="font-size: 0.8em; color: #666; margin-top: 10px;">
-                Paiement 100% sécurisé, anonyme et mondial via Bitcoin, Ethereum, USDC, etc.
+                Paiement 100% sécurisé, anonyme et mondial via NowPayments.
             </p>
         </div>
 
@@ -226,7 +178,6 @@
         </div>
     </div>
     
-    <!-- ZONE DE SUCCÈS (Cachée par défaut, affichée après paiement) -->
     <div id="successView" style="display:none;"></div>
 </div>
 
@@ -235,17 +186,17 @@
 window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
     const status = urlParams.get('status');
-    const chargeCode = urlParams.get('charge_code');
+    // Récupère l'ID de paiement depuis l'URL ou le stockage session
+    const paymentId = urlParams.get('payment_id') || sessionStorage.getItem('payment_id');
     
-    // Si l'utilisateur revient de Coinbase après un paiement
-    if(status === 'paid' && chargeCode) {
-        showSuccessScreen(chargeCode);
+    if(status === 'paid' && paymentId) {
+        showSuccessScreen(paymentId);
     } else {
-        initFormLogic(); // Lance les écouteurs normaux
+        initFormLogic();
     }
 };
 
-async function showSuccessScreen(chargeCode) {
+async function showSuccessScreen(paymentId) {
     const formContent = document.getElementById('formContent');
     const successView = document.getElementById('successView');
     
@@ -272,25 +223,34 @@ async function showSuccessScreen(chargeCode) {
     `;
     successView.style.display = 'block';
 
-    // Interroger le backend pour obtenir le lien de téléchargement sécurisé
+    // Interroger le backend en boucle (polling) jusqu'à confirmation
     try {
-        const res = await fetch(`/check-payment/${chargeCode}`);
-        const data = await res.json();
+        let attempts = 0;
+        const maxAttempts = 10; // Vérifie toutes les 3 secondes pendant 30s max
         
-        document.getElementById('loadingReport').style.display = 'none';
-        
-        if(data.status === 'paid' && data.report_url) {
-            const downloadBtn = document.getElementById('finalDownloadLink');
-            downloadBtn.href = data.report_url;
-            downloadBtn.style.display = 'block';
+        const checkStatus = async () => {
+            const res = await fetch(`/check-payment/${paymentId}`);
+            const data = await res.json();
             
-            // Déclencher le téléchargement automatiquement après 1 seconde
-            setTimeout(() => {
-                window.open(data.report_url, '_blank');
-            }, 1000);
-        } else {
-            document.getElementById('loadingReport').innerHTML = `<p style='color:red;'>Erreur : Paiement non trouvé. Contactez le support avec le code : <strong>${chargeCode}</strong></p>`;
-        }
+            if(data.status === 'paid' && data.report_url) {
+                document.getElementById('loadingReport').style.display = 'none';
+                const downloadBtn = document.getElementById('finalDownloadLink');
+                downloadBtn.href = data.report_url;
+                downloadBtn.style.display = 'block';
+                
+                // Déclencher le téléchargement automatiquement après 1 seconde
+                setTimeout(() => {
+                    window.open(data.report_url, '_blank');
+                }, 1000);
+            } else if(attempts < maxAttempts) {
+                attempts++;
+                setTimeout(checkStatus, 3000); // Réessaye dans 3 secondes
+            } else {
+                document.getElementById('loadingReport').innerHTML = `<p style='color:red;'>Paiement en attente de confirmation blockchain. Rafraîchissez dans quelques minutes. Code : <strong>${paymentId}</strong></p>`;
+            }
+        };
+        
+        await checkStatus();
     } catch(e) {
         console.error(e);
         document.getElementById('loadingReport').innerHTML = "<p style='color:red;'>Erreur de vérification réseau. Veuillez rafraîchir la page.</p>";
@@ -379,7 +339,6 @@ function initFormLogic() {
         this.disabled = true;
         
         try {
-            let response;
             const formData = new FormData();
             formData.append('mode', selectedAuditMode); 
 
@@ -395,7 +354,7 @@ function initFormLogic() {
                 formData.append('file', fileObj);
             }
 
-            response = await fetch('/analyze', { method: 'POST', body: formData });
+            const response = await fetch('/analyze', { method: 'POST', body: formData });
             const data = await response.json();
             
             if(data.status === 'success') {
@@ -436,12 +395,12 @@ function initFormLogic() {
             <p>Anomalies détectées : <strong>${summary.subscriptions_detected || summary.hidden_costs_detected}</strong></p>
             <hr style="border:0; border-top:1px solid #ffe0b2; margin:10px 0;">
             <p style="font-size:1.2em; margin:0;">Perte annuelle estimée : <span style='color:red;font-weight:bold;'>${lossLabel} €</span></p>
-            <small style="display:block; margin-top:10px; color:#666;">Validez votre audit complet ci-dessous pour recevoir le détail ligne par ligne et les scripts de résiliation.</small>
+            <small style="display:block; margin-top:10px; color:#666;">Débloquez le rapport complet pour recevoir les scripts de résiliation.</small>
         </div>`;
         resultsArea.innerHTML = html;
     }
 
-    // NOUVEAU : Logique de Paiement Crypto
+    // LOGIQUE DE PAIEMENT NOWPAYMENTS
     payNowBtn.addEventListener('click', async function() {
         if(!currentUid || !currentToken) return alert("Veuillez d'abord lancer l'analyse.");
         
@@ -456,17 +415,17 @@ function initFormLogic() {
                 body: JSON.stringify({
                     temp_user_id: currentUid,
                     report_token: currentToken,
-                    email: 'client@sentinel.global' // Email par défaut, peut être rendu dynamique si besoin
+                    email: 'client@sentinel.global'
                 })
             });
             
             const data = await response.json();
             
-            if(data.status === 'success' && data.hosted_url) {
-                // Sauvegarder le code de charge pour la vérification au retour
-                sessionStorage.setItem('charge_code', data.charge_code);
-                // Rediriger l'utilisateur vers la page de paiement Coinbase Commerce
-                window.location.href = data.hosted_url;
+            if(data.status === 'success' && data.invoice_url) {
+                // Sauvegarder l'ID de paiement NowPayments pour la vérification au retour
+                sessionStorage.setItem('payment_id', data.payment_id);
+                // Rediriger l'utilisateur vers la page de paiement sécurisée
+                window.location.href = data.invoice_url;
             } else {
                 alert("Erreur lors de la création du paiement: " + (data.error || "Inconnue"));
                 this.innerHTML = originalText;
