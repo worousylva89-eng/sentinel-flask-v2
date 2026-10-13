@@ -298,10 +298,17 @@ def create_crypto_charge():
         payment_id = str(payment_data.get('payment_id'))
         invoice_url = payment_data.get('invoice_url')
 
-        # 🚨 CORRECTION ULTIME : Si NowPayments renvoie une URL null, on la construit nous-mêmes
+        # 🚨 CORRECTION ULTIME : Si NowPayments renvoie une URL null, on construit l'URL complète avec tous les paramètres
         if not invoice_url and payment_id:
-            invoice_url = f"https://nowpayments.io/payment/?iid={payment_id}"
-            print(f"⚠️ invoice_url manquant. URL de secours générée : {invoice_url}")
+            invoice_url = (
+                f"https://nowpayments.io/payment/?"
+                f"iid={payment_id}"
+                f"&amount={price_amount}"
+                f"&currency=eur"
+                f"&pay_currency={pay_currency}"
+                f"&order_id={temp_user_id}"
+            )
+            print(f"⚠️ invoice_url manquant. URL complète de secours générée : {invoice_url}")
 
         payments_store[payment_id] = {
             'user_id': temp_user_id,
