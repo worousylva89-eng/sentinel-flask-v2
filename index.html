@@ -429,7 +429,7 @@ function initFormLogic() {
         resultsArea.innerHTML = html;
     }
 
-    // LOGIQUE DE PAIEMENT AMÉLIORÉE AVEC DÉBOGAGE
+    // LOGIQUE DE PAIEMENT AMÉLIORÉE AVEC DÉBOGAGE COMPLET
     payNowBtn.addEventListener('click', async function() {
         if(!currentUid || !currentToken) return alert("Veuillez d'abord lancer l'analyse.");
         
@@ -453,7 +453,7 @@ function initFormLogic() {
                 })
             });
             
-            // Lecture brute de la réponse pour voir l'erreur exacte si ce n'est pas du JSON valide
+            // Lecture brute de la réponse pour voir l'erreur exacte
             const responseText = await response.text();
             console.log("Réponse brute du serveur:", responseText);
             
@@ -473,7 +473,8 @@ function initFormLogic() {
                 window.location.href = data.invoice_url;
             } else {
                 console.error("Erreur détaillée renvoyée par le serveur:", data);
-                alert("Erreur lors de la création du paiement:\n" + (data.error || "Erreur inconnue - Vérifiez la console du navigateur (F12)"));
+                // MODIFICATION ICI : Afficher TOUTE la réponse JSON pour voir ce qui manque
+                alert("Erreur lors de la création du paiement:\n\n" + JSON.stringify(data, null, 2));
                 this.innerHTML = originalText;
                 this.disabled = false;
             }
