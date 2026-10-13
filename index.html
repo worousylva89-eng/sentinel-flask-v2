@@ -72,6 +72,43 @@
             background: linear-gradient(135deg, #5a32a3 0%, #0d155e 100%) !important;
             transform: translateY(-1px);
         }
+
+        /* NOUVEAU : Style pour le sélecteur de crypto */
+        .payment-options {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: left;
+            border: 1px solid #e0e0e0;
+        }
+        .payment-options label {
+            font-weight: bold;
+            color: #333;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+        .crypto-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%231a237e%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px top 50%;
+            background-size: 12px auto;
+            appearance: none;
+        }
+        .crypto-select:focus {
+            outline: none;
+            border-color: #1a237e;
+        }
+
         .crypto-badges { display: flex; justify-content: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
         .crypto-badge { background: #f0f0f0; padding: 4px 10px; border-radius: 12px; font-size: 0.75em; color: #555; font-weight: bold; }
     </style>
@@ -148,6 +185,7 @@
 
         <div id="resultsArea"></div>
 
+        <!-- SECTION PAIEMENT AMÉLIORÉE (SIMPLE + AVANCÉE) -->
         <div id="payButtonContainer" class="pay-section">
             <h3 style="color:#d32f2f;">💰 Votre Potentiel de Gain Identifié</h3>
             <p>Pour obtenir le rapport détaillé, les scripts de résiliation et le plan d'action complet :</p>
@@ -156,21 +194,27 @@
                 📥 Télécharger Mon Aperçu Gratuit (PDF)
             </a>
 
+            <div class="payment-options">
+                <label for="cryptoSelect">Choisissez votre méthode de paiement (14.99€) :</label>
+                <select id="cryptoSelect" class="crypto-select">
+                    <option value="usdttrc20">💵 USDT (TRC20) - Recommandé (Frais de réseau minimes)</option>
+                    <option value="btc">₿ Bitcoin (BTC)</option>
+                    <option value="eth">Ξ Ethereum (ETH)</option>
+                    <option value="usdc">🟢 USD Coin (USDC)</option>
+                    <option value="bnb">🟡 Binance Coin (BNB)</option>
+                </select>
+            </div>
+
             <button id="payNowBtn" class="btn-primary-large btn-crypto-pay">
-                🔓 Débloquer le Rapport Complet - 9.99€ (Crypto)
+                🔓 Débloquer le Rapport Complet - 14.99€
             </button>
             
             <div class="crypto-badges">
-                <span class="crypto-badge">₿ Bitcoin</span>
-                <span class="crypto-badge">Ξ Ethereum</span>
-                <span class="crypto-badge">💵 USDT</span>
-                <span class="crypto-badge">🟢 USDC</span>
-                <span class="crypto-badge">🟡 BNB</span>
+                <span class="crypto-badge">Sécurisé</span>
+                <span class="crypto-badge">Anonyme</span>
+                <span class="crypto-badge">Mondial</span>
+                <span class="crypto-badge">Via NowPayments</span>
             </div>
-            
-            <p style="font-size: 0.8em; color: #666; margin-top: 10px;">
-                Paiement 100% sécurisé, anonyme et mondial via NowPayments.
-            </p>
         </div>
 
         <div class="footer-note">
@@ -186,7 +230,6 @@
 window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
     const status = urlParams.get('status');
-    // Récupère l'ID de paiement depuis l'URL ou le stockage session
     const paymentId = urlParams.get('payment_id') || sessionStorage.getItem('payment_id');
     
     if(status === 'paid' && paymentId) {
@@ -223,10 +266,9 @@ async function showSuccessScreen(paymentId) {
     `;
     successView.style.display = 'block';
 
-    // Interroger le backend en boucle (polling) jusqu'à confirmation
     try {
         let attempts = 0;
-        const maxAttempts = 10; // Vérifie toutes les 3 secondes pendant 30s max
+        const maxAttempts = 10;
         
         const checkStatus = async () => {
             const res = await fetch(`/check-payment/${paymentId}`);
@@ -237,19 +279,16 @@ async function showSuccessScreen(paymentId) {
                 const downloadBtn = document.getElementById('finalDownloadLink');
                 downloadBtn.href = data.report_url;
                 downloadBtn.style.display = 'block';
-                
-                // Déclencher le téléchargement automatiquement après 1 seconde
                 setTimeout(() => {
                     window.open(data.report_url, '_blank');
                 }, 1000);
             } else if(attempts < maxAttempts) {
                 attempts++;
-                setTimeout(checkStatus, 3000); // Réessaye dans 3 secondes
+                setTimeout(checkStatus, 3000);
             } else {
                 document.getElementById('loadingReport').innerHTML = `<p style='color:red;'>Paiement en attente de confirmation blockchain. Rafraîchissez dans quelques minutes. Code : <strong>${paymentId}</strong></p>`;
             }
         };
-        
         await checkStatus();
     } catch(e) {
         console.error(e);
@@ -262,6 +301,7 @@ function initFormLogic() {
     const inputElement = document.getElementById('bankStatementInput');
     const digitalTextarea = document.getElementById('digitalDataInput');
     const manualTextarea = document.getElementById('manualDataInput');
+    const cryptoSelect = document.getElementById('cryptoSelect'); // NOUVEAU
     
     const fileNameDisplay = document.getElementById('fileNameDisplay');
     const startBtn = document.getElementById('startAnalysisBtn');
@@ -305,13 +345,9 @@ function initFormLogic() {
 
     function checkReadyState() {
         let hasData = false;
-        if(selectedAuditMode === 'classic_file') {
-            hasData = inputElement.files.length > 0;
-        } else if(selectedAuditMode === 'digital_text') {
-            hasData = digitalTextarea.value.trim().length > 0;
-        } else if(selectedAuditMode === 'manual_simple') {
-            hasData = manualTextarea.value.trim().length > 0;
-        }
+        if(selectedAuditMode === 'classic_file') hasData = inputElement.files.length > 0;
+        else if(selectedAuditMode === 'digital_text') hasData = digitalTextarea.value.trim().length > 0;
+        else if(selectedAuditMode === 'manual_simple') hasData = manualTextarea.value.trim().length > 0;
 
         if(hasData) {
             startBtn.disabled = false;
@@ -346,12 +382,10 @@ function initFormLogic() {
                 formData.append('file', inputElement.files[0]);
             } else if(selectedAuditMode === 'digital_text') {
                 const blob = new Blob([digitalTextarea.value], { type: 'text/csv' });
-                const fileObj = new File([blob], "wallet_audit.csv", { type: "text/csv" });
-                formData.append('file', fileObj);
+                formData.append('file', new File([blob], "wallet_audit.csv", { type: "text/csv" }));
             } else if(selectedAuditMode === 'manual_simple') {
                 const blob = new Blob([manualTextarea.value], { type: 'text/csv' });
-                const fileObj = new File([blob], "manual_audit.csv", { type: "text/csv" });
-                formData.append('file', fileObj);
+                formData.append('file', new File([blob], "manual_audit.csv", { type: "text/csv" }));
             }
 
             const response = await fetch('/analyze', { method: 'POST', body: formData });
@@ -369,8 +403,7 @@ function initFormLogic() {
                 paySection.style.display = 'block';
 
                 if(downloadLink && currentUid && currentToken) {
-                    const pdfUrl = `/download-report/${currentUid}?token=${encodeURIComponent(currentToken)}`;
-                    downloadLink.href = pdfUrl;
+                    downloadLink.href = `/download-report/${currentUid}?token=${encodeURIComponent(currentToken)}`;
                 }
             } else {
                 alert("Erreur : " + data.error);
@@ -400,13 +433,17 @@ function initFormLogic() {
         resultsArea.innerHTML = html;
     }
 
-    // LOGIQUE DE PAIEMENT NOWPAYMENTS
+    // LOGIQUE DE PAIEMENT NOWPAYMENTS (MISE À JOUR POUR SUPPORTER LE CHOIX DE CRYPTO)
     payNowBtn.addEventListener('click', async function() {
         if(!currentUid || !currentToken) return alert("Veuillez d'abord lancer l'analyse.");
         
         const originalText = this.innerHTML;
         this.innerHTML = "<span class='spinner'></span> Préparation du paiement sécurisé...";
         this.disabled = true;
+
+        // Récupérer la crypto choisie
+        const selectedCrypto = cryptoSelect.value;
+        const paymentType = selectedCrypto === 'usdttrc20' ? 'simple' : 'advanced';
 
         try {
             const response = await fetch('/create-crypto-charge', {
@@ -415,16 +452,16 @@ function initFormLogic() {
                 body: JSON.stringify({
                     temp_user_id: currentUid,
                     report_token: currentToken,
-                    email: 'client@sentinel.global'
+                    email: 'client@sentinel.global',
+                    payment_type: paymentType,      // NOUVEAU
+                    pay_currency: selectedCrypto    // NOUVEAU
                 })
             });
             
             const data = await response.json();
             
             if(data.status === 'success' && data.invoice_url) {
-                // Sauvegarder l'ID de paiement NowPayments pour la vérification au retour
                 sessionStorage.setItem('payment_id', data.payment_id);
-                // Rediriger l'utilisateur vers la page de paiement sécurisée
                 window.location.href = data.invoice_url;
             } else {
                 alert("Erreur lors de la création du paiement: " + (data.error || "Inconnue"));
