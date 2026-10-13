@@ -226,7 +226,7 @@ def analyze_upload():
         return jsonify({"error": f"Échec lecture fichier: {str(e)}"}), 500
 
 # ==========================================
-# INTÉGRATION NOWPAYMENTS (CRÉATION PAIEMENT)
+# INTÉGRATION NOWPAYMENTS (CRÉATION PAIEMENT AVEC DEBUG)
 # ==========================================
 @app.route('/create-crypto-charge', methods=['POST'])
 def create_crypto_charge():
@@ -236,14 +236,18 @@ def create_crypto_charge():
         temp_user_id = data.get('temp_user_id', 'unknown')
         report_token = data.get('report_token', '')
         
-        if not NOWPAYMENTS_API_KEY:
-            return jsonify({"error": "API Key NowPayments non configurée"}), 500
+        print("--- DÉBUT DEBUG NOWPAYMENTS ---")
+        print(f"API Key présente: {bool(NOWPAYMENTS_API_KEY)}")
+        if NOWPAYMENTS_API_KEY:
+            print(f"API Key (début): {NOWPAYMENTS_API_KEY[:10]}...")
+        else:
+            print("ERREUR CRITIQUE: NOWPAYMENTS_API_KEY est vide ou None dans Render !")
+            return jsonify({"error": "API Key NowPayments non configurée dans Render"}), 500
 
-        # Appel API NowPayments pour créer un paiement
         payload = {
             "price_amount": 9.99,
             "price_currency": "eur",
-            "pay_currency": "usdttrc20",  # USDT sur TRON (frais quasi nuls pour le client)
+            "pay_currency": "usdttrc20",
             "ipn_callback_url": f"{request.host_url.rstrip('/')}/webhook",
             "order_id": temp_user_id,
             "order_description": "Sentinel Finance - Rapport Complet",
@@ -258,6 +262,8 @@ def create_crypto_charge():
             "Content-Type": "application/json"
         }
 
+        print(f"Envoi de la requête à: {NOWPAYMENTS_API_URL}/payment")
+        
         response = requests.post(
             f"{NOWPAYMENTS_API_URL}/payment",
             json=payload,
@@ -265,15 +271,20 @@ def create_crypto_charge():
             timeout=10
         )
 
+        print(f"Status Code de la réponse: {response.status_code}")
+        print(f"Réponse brute de NowPayments: {response.text}")
+        print("--- FIN DEBUG NOWPAYMENTS ---")
+
         if response.status_code != 200:
-            print(f"NowPayments Error: {response.status_code} - {response.text}")
-            return jsonify({"error": f"Erreur passerelle de paiement: {response.status_code}"}), 500
+            # On renvoie l'erreur exacte de NowPayments au frontend pour le débogage
+            return jsonify({
+                "error": f"Erreur NowPayments ({response.status_code}): {response.text}"
+            }), response.status_code
 
         payment_data = response.json()
         payment_id = str(payment_data.get('payment_id'))
         invoice_url = payment_data.get('invoice_url')
 
-        # Stocker le paiement en attente localement
         payments_store[payment_id] = {
             'user_id': temp_user_id,
             'report_token': report_token,
@@ -292,7 +303,7 @@ def create_crypto_charge():
     except requests.exceptions.Timeout:
         return jsonify({"error": "Délai d'attente dépassé"}), 504
     except Exception as e:
-        print(f"NowPayments Error: {str(e)}")
+        print(f"Erreur complète inattendue: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # ==========================================
@@ -305,12 +316,10 @@ def handle_webhook():
         if not NOWPAYMENTS_IPN_SECRET:
             return jsonify({"error": "IPN Secret non configuré"}), 500
 
-        # 1. Récupérer la signature du header
         signature = request.headers.get('x-nowpayments-sig', '')
         if not signature:
             return jsonify({"error": "Signature manquante"}), 400
 
-        # 2. Vérifier la signature HMAC-SHA512
         raw_body = request.get_data()
         expected_signature = hmac.new(
             NOWPAYMENTS_IPN_SECRET.encode('utf-8'),
@@ -322,7 +331,6 @@ def handle_webhook():
             print("⚠️ Signature webhook invalide")
             return jsonify({"error": "Signature invalide"}), 403
 
-        # 3. Parser le corps de la requête
         payment_data = json.loads(raw_body)
         payment_id = str(payment_data.get('payment_id', ''))
         payment_status = payment_data.get('payment_status', '')
@@ -330,7 +338,6 @@ def handle_webhook():
 
         print(f"Webhook reçu: payment_id={payment_id}, status={payment_status}, order_id={order_id}")
 
-        # 4. Mettre à jour le statut local
         if payment_id in payments_store:
             payment_info = payments_store[payment_id]
 
@@ -490,7 +497,6 @@ def generate_pdf_report(uid, analysis_data, is_paid=False):
     pdf.ln(5)
 
     if not is_paid:
-        # Version GRATUITE - Contenu masqué
         pdf.set_draw_color(211, 47, 47)
         pdf.set_line_width(1)
         pdf.rect(10, pdf.get_y(), 190, 60, style='D')
@@ -511,7 +517,6 @@ Le rapport COMPLET inclut :
         """
         pdf.multi_cell(0, 5, locked_content.strip())
     else:
-        # Version PAYÉE - Contenu débloqué
         pdf.set_draw_color(76, 175, 80)
         pdf.set_line_width(1)
         pdf.rect(10, pdf.get_y(), 190, 75, style='D')
