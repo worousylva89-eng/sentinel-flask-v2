@@ -73,7 +73,6 @@
             transform: translateY(-1px);
         }
 
-        /* NOUVEAU : Style pour le sélecteur de crypto */
         .payment-options {
             background: #f8f9fa;
             padding: 15px;
@@ -185,7 +184,6 @@
 
         <div id="resultsArea"></div>
 
-        <!-- SECTION PAIEMENT AMÉLIORÉE (SIMPLE + AVANCÉE) -->
         <div id="payButtonContainer" class="pay-section">
             <h3 style="color:#d32f2f;">💰 Votre Potentiel de Gain Identifié</h3>
             <p>Pour obtenir le rapport détaillé, les scripts de résiliation et le plan d'action complet :</p>
@@ -195,7 +193,6 @@
             </a>
 
             <div class="payment-options">
-                <!-- MODIFICATION ICI : Prix mis à jour à 19.99€ -->
                 <label for="cryptoSelect">Choisissez votre méthode de paiement (19.99€) :</label>
                 <select id="cryptoSelect" class="crypto-select">
                     <option value="usdttrc20">💵 USDT (TRC20) - Recommandé (Frais de réseau minimes)</option>
@@ -206,7 +203,6 @@
                 </select>
             </div>
 
-            <!-- MODIFICATION ICI : Prix mis à jour à 19.99€ -->
             <button id="payNowBtn" class="btn-primary-large btn-crypto-pay">
                 🔓 Débloquer le Rapport Complet - 19.99€
             </button>
@@ -228,7 +224,6 @@
 </div>
 
 <script>
-// --- INITIALISATION & DÉTECTION RETOUR PAIEMENT ---
 window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
     const status = urlParams.get('status');
@@ -298,12 +293,11 @@ async function showSuccessScreen(paymentId) {
     }
 }
 
-// --- LOGIQUE NORMALE DU FORMULAIRE ---
 function initFormLogic() {
     const inputElement = document.getElementById('bankStatementInput');
     const digitalTextarea = document.getElementById('digitalDataInput');
     const manualTextarea = document.getElementById('manualDataInput');
-    const cryptoSelect = document.getElementById('cryptoSelect'); // NOUVEAU
+    const cryptoSelect = document.getElementById('cryptoSelect');
     
     const fileNameDisplay = document.getElementById('fileNameDisplay');
     const startBtn = document.getElementById('startAnalysisBtn');
@@ -435,7 +429,6 @@ function initFormLogic() {
         resultsArea.innerHTML = html;
     }
 
-    // LOGIQUE DE PAIEMENT NOWPAYMENTS (MISE À JOUR POUR SUPPORTER LE CHOIX DE CRYPTO)
     payNowBtn.addEventListener('click', async function() {
         if(!currentUid || !currentToken) return alert("Veuillez d'abord lancer l'analyse.");
         
@@ -443,7 +436,6 @@ function initFormLogic() {
         this.innerHTML = "<span class='spinner'></span> Préparation du paiement sécurisé...";
         this.disabled = true;
 
-        // Récupérer la crypto choisie
         const selectedCrypto = cryptoSelect.value;
         const paymentType = selectedCrypto === 'usdttrc20' ? 'simple' : 'advanced';
 
@@ -455,8 +447,8 @@ function initFormLogic() {
                     temp_user_id: currentUid,
                     report_token: currentToken,
                     email: 'client@sentinel.global',
-                    payment_type: paymentType,      // NOUVEAU
-                    pay_currency: selectedCrypto    // NOUVEAU
+                    payment_type: paymentType,
+                    pay_currency: selectedCrypto
                 })
             });
             
