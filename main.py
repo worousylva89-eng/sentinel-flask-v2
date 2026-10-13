@@ -226,7 +226,7 @@ def analyze_upload():
         return jsonify({"error": f"Échec lecture fichier: {str(e)}"}), 500
 
 # ==========================================
-# INTÉGRATION NOWPAYMENTS (CRÉATION PAIEMENT AVEC DEBUG)
+# INTÉGRATION NOWPAYMENTS (VERSION SIMPLE + AVANCÉE)
 # ==========================================
 @app.route('/create-crypto-charge', methods=['POST'])
 def create_crypto_charge():
@@ -236,7 +236,20 @@ def create_crypto_charge():
         temp_user_id = data.get('temp_user_id', 'unknown')
         report_token = data.get('report_token', '')
         
+        # NOUVEAU : Gestion des deux versions de paiement
+        payment_type = data.get('payment_type', 'simple') # 'simple' ou 'advanced'
+        pay_currency = data.get('pay_currency', 'usdttrc20').lower()
+        
+        # Montant fixé à 14.99€ pour éviter l'erreur "amountTo is too small" de NowPayments
+        price_amount = 14.99 
+        
+        # Liste des cryptos autorisées pour la version avancée (fallback sur USDT TRC20)
+        allowed_currencies = ['btc', 'eth', 'usdttrc20', 'usdcter20', 'usdc', 'bnb', 'ltc', 'xrp', 'trx']
+        if pay_currency not in allowed_currencies:
+            pay_currency = 'usdttrc20'
+
         print("--- DÉBUT DEBUG NOWPAYMENTS ---")
+        print(f"Type de paiement: {payment_type}, Crypto choisie: {pay_currency}, Montant: {price_amount} EUR")
         print(f"API Key présente: {bool(NOWPAYMENTS_API_KEY)}")
         if NOWPAYMENTS_API_KEY:
             print(f"API Key (début): {NOWPAYMENTS_API_KEY[:10]}...")
@@ -245,12 +258,12 @@ def create_crypto_charge():
             return jsonify({"error": "API Key NowPayments non configurée dans Render"}), 500
 
         payload = {
-            "price_amount": 9.99,
+            "price_amount": price_amount,
             "price_currency": "eur",
-            "pay_currency": "usdttrc20",
+            "pay_currency": pay_currency,
             "ipn_callback_url": f"{request.host_url.rstrip('/')}/webhook",
             "order_id": temp_user_id,
-            "order_description": "Sentinel Finance - Rapport Complet",
+            "order_description": f"Sentinel Finance - Rapport Complet ({pay_currency.upper()})",
             "success_url": f"{request.host_url.rstrip('/')}/?status=paid",
             "cancel_url": f"{request.host_url.rstrip('/')}/",
             "is_fixed_rate": False,
@@ -276,7 +289,6 @@ def create_crypto_charge():
         print("--- FIN DEBUG NOWPAYMENTS ---")
 
         if response.status_code != 200:
-            # On renvoie l'erreur exacte de NowPayments au frontend pour le débogage
             return jsonify({
                 "error": f"Erreur NowPayments ({response.status_code}): {response.text}"
             }), response.status_code
@@ -290,7 +302,7 @@ def create_crypto_charge():
             'report_token': report_token,
             'status': 'waiting',
             'created_at': datetime.now().isoformat(),
-            'amount': '9.99 EUR'
+            'amount': f'{price_amount} EUR'
         }
 
         return jsonify({
@@ -506,8 +518,9 @@ def generate_pdf_report(uid, analysis_data, is_paid=False):
         pdf.cell(0, 8, 'CONTENU EXCLUSIF MASQUE', ln=True)
         pdf.set_font('Arial', '', 10)
         pdf.set_text_color(0)
+        # MISE À JOUR DU PRIX DANS LE PDF
         locked_content = """
-Pour obtenir le plan d'action detaille permettant de recuperer ces gains, veuillez payer 9.99 EUR via crypto-monnaie.
+Pour obtenir le plan d'action detaille permettant de recuperer ces gains, veuillez payer 14.99 EUR via crypto-monnaie.
 
 Le rapport COMPLET inclut :
 - Les numeros verts exacts pour resilier chaque abonnement.
