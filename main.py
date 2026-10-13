@@ -226,7 +226,7 @@ def analyze_upload():
         return jsonify({"error": f"Échec lecture fichier: {str(e)}"}), 500
 
 # ==========================================
-# INTÉGRATION NOWPAYMENTS (CORRIGÉE AVEC /INVOICE)
+# INTÉGRATION NOWPAYMENTS (ULTRA-ROBUSTE)
 # ==========================================
 @app.route('/create-crypto-charge', methods=['POST'])
 def create_crypto_charge():
@@ -250,8 +250,6 @@ def create_crypto_charge():
         print(f"Type: {payment_type}, Crypto: {pay_currency}, Montant: {price_amount} EUR")
         print(f"API Key présente: {bool(NOWPAYMENTS_API_KEY)}")
 
-        # ✅ CORRECTION DÉFINITIVE : Utilisation de l'endpoint /invoice au lieu de /payment
-        # L'endpoint /invoice est beaucoup plus fiable pour obtenir l'invoice_url
         payload = {
             "price_amount": price_amount,
             "price_currency": "eur",
@@ -261,7 +259,7 @@ def create_crypto_charge():
             "order_description": f"Sentinel Finance - Rapport Complet ({pay_currency.upper()})",
             "success_url": f"{request.host_url.rstrip('/')}/?status=paid",
             "cancel_url": f"{request.host_url.rstrip('/')}/",
-            "is_fixed_rate": True,  # Mis à True pour figer le taux de conversion
+            "is_fixed_rate": True,
             "is_fee_paid_by_user": True
         }
 
@@ -280,7 +278,6 @@ def create_crypto_charge():
         )
 
         print(f"Status Code: {response.status_code}")
-        print(f"Réponse brute: {response.text}")
         print("--- FIN DEBUG ---")
 
         if response.status_code not in [200, 201]:
@@ -290,17 +287,26 @@ def create_crypto_charge():
 
         payment_data = response.json()
         
-        # NowPayments peut retourner 'payment_id' ou 'id' selon l'endpoint
+        # 🚨 AFFICHAGE COMPLET DE LA RÉPONSE POUR DÉBOGAGE
+        print(f"Réponse complète NowPayments: {json.dumps(payment_data, indent=2)}")
+        
+        # Extraction robuste de l'ID et de l'URL
         payment_id = str(payment_data.get('payment_id') or payment_data.get('id', ''))
         invoice_url = payment_data.get('invoice_url') or payment_data.get('payment_url')
 
         print(f"Payment ID extrait: {payment_id}")
         print(f"Invoice URL extraite: {invoice_url}")
 
-        # 🚨 Solution de secours ultime si l'URL est toujours null
-        if not invoice_url and payment_id:
+        # 🚨 SOLUTION DE SECOURS ULTIME
+        if not invoice_url and payment_id and payment_id != 'None' and payment_id != '':
             invoice_url = f"https://nowpayments.io/payment/?iid={payment_id}"
-            print(f"⚠️ URL manquante, solution de secours générée : {invoice_url}")
+            print(f"✅ URL de secours générée manuellement: {invoice_url}")
+        elif not invoice_url:
+            print("❌ ERREUR CRITIQUE: NowPayments n'a retourné ni URL ni ID valide!")
+            return jsonify({
+                "error": "NowPayments n'a pas retourné d'ID de paiement valide. Vérifiez votre compte NowPayments.",
+                "debug": str(payment_data)
+            }), 500
 
         payments_store[payment_id] = {
             'user_id': temp_user_id,
