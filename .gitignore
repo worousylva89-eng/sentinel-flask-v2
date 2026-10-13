@@ -1,0 +1,16 @@
+# Ignore le fichier contenant les vraies clés
+.env
+
+# Fichiers et dossiers Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Fichiers OS
+.DS_Store
+Thumbs.db
