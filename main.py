@@ -226,7 +226,7 @@ def analyze_upload():
         return jsonify({"error": f"Échec lecture fichier: {str(e)}"}), 500
 
 # ==========================================
-# INTÉGRATION NOWPAYMENTS (VERSION SIMPLE + AVANCÉE)
+# INTÉGRATION NOWPAYMENTS (CORRIGÉE AVEC /INVOICE)
 # ==========================================
 @app.route('/create-crypto-charge', methods=['POST'])
 def create_crypto_charge():
@@ -236,27 +236,22 @@ def create_crypto_charge():
         temp_user_id = data.get('temp_user_id', 'unknown')
         report_token = data.get('report_token', '')
         
-        # NOUVEAU : Gestion des deux versions de paiement
-        payment_type = data.get('payment_type', 'simple') # 'simple' ou 'advanced'
+        payment_type = data.get('payment_type', 'simple')
         pay_currency = data.get('pay_currency', 'usdttrc20').lower()
         
-        # CORRECTION CRUCIALE : Montant fixé à 19.99€ pour être AU-DESSUS du minimum de TOUTES les cryptos (ex: BTC)
+        # Montant fixé à 19.99€ pour être AU-DESSUS du minimum de TOUTES les cryptos
         price_amount = 19.99 
         
-        # Liste des cryptos autorisées pour la version avancée (fallback sur USDT TRC20)
         allowed_currencies = ['btc', 'eth', 'usdttrc20', 'usdcter20', 'usdc', 'bnb', 'ltc', 'xrp', 'trx']
         if pay_currency not in allowed_currencies:
             pay_currency = 'usdttrc20'
 
         print("--- DÉBUT DEBUG NOWPAYMENTS ---")
-        print(f"Type de paiement: {payment_type}, Crypto choisie: {pay_currency}, Montant: {price_amount} EUR")
+        print(f"Type: {payment_type}, Crypto: {pay_currency}, Montant: {price_amount} EUR")
         print(f"API Key présente: {bool(NOWPAYMENTS_API_KEY)}")
-        if NOWPAYMENTS_API_KEY:
-            print(f"API Key (début): {NOWPAYMENTS_API_KEY[:10]}...")
-        else:
-            print("ERREUR CRITIQUE: NOWPAYMENTS_API_KEY est vide ou None dans Render !")
-            return jsonify({"error": "API Key NowPayments non configurée dans Render"}), 500
 
+        # ✅ CORRECTION DÉFINITIVE : Utilisation de l'endpoint /invoice au lieu de /payment
+        # L'endpoint /invoice est beaucoup plus fiable pour obtenir l'invoice_url
         payload = {
             "price_amount": price_amount,
             "price_currency": "eur",
@@ -266,7 +261,7 @@ def create_crypto_charge():
             "order_description": f"Sentinel Finance - Rapport Complet ({pay_currency.upper()})",
             "success_url": f"{request.host_url.rstrip('/')}/?status=paid",
             "cancel_url": f"{request.host_url.rstrip('/')}/",
-            "is_fixed_rate": False,
+            "is_fixed_rate": True,  # Mis à True pour figer le taux de conversion
             "is_fee_paid_by_user": True
         }
 
@@ -275,40 +270,37 @@ def create_crypto_charge():
             "Content-Type": "application/json"
         }
 
-        print(f"Envoi de la requête à: {NOWPAYMENTS_API_URL}/payment")
+        print(f"Envoi de la requête à: {NOWPAYMENTS_API_URL}/invoice")
         
         response = requests.post(
-            f"{NOWPAYMENTS_API_URL}/payment",
+            f"{NOWPAYMENTS_API_URL}/invoice",
             json=payload,
             headers=headers,
             timeout=10
         )
 
-        print(f"Status Code de la réponse: {response.status_code}")
-        print(f"Réponse brute de NowPayments: {response.text}")
-        print("--- FIN DEBUG NOWPAYMENTS ---")
+        print(f"Status Code: {response.status_code}")
+        print(f"Réponse brute: {response.text}")
+        print("--- FIN DEBUG ---")
 
-        # ✅ CORRECTION : NowPayments retourne 201 (Created) pour les paiements créés avec succès
         if response.status_code not in [200, 201]:
             return jsonify({
                 "error": f"Erreur NowPayments ({response.status_code}): {response.text}"
             }), response.status_code
 
         payment_data = response.json()
-        payment_id = str(payment_data.get('payment_id'))
-        invoice_url = payment_data.get('invoice_url')
+        
+        # NowPayments peut retourner 'payment_id' ou 'id' selon l'endpoint
+        payment_id = str(payment_data.get('payment_id') or payment_data.get('id', ''))
+        invoice_url = payment_data.get('invoice_url') or payment_data.get('payment_url')
 
-        # 🚨 CORRECTION ULTIME : Si NowPayments renvoie une URL null, on construit l'URL complète avec tous les paramètres
+        print(f"Payment ID extrait: {payment_id}")
+        print(f"Invoice URL extraite: {invoice_url}")
+
+        # 🚨 Solution de secours ultime si l'URL est toujours null
         if not invoice_url and payment_id:
-            invoice_url = (
-                f"https://nowpayments.io/payment/?"
-                f"iid={payment_id}"
-                f"&amount={price_amount}"
-                f"&currency=eur"
-                f"&pay_currency={pay_currency}"
-                f"&order_id={temp_user_id}"
-            )
-            print(f"⚠️ invoice_url manquant. URL complète de secours générée : {invoice_url}")
+            invoice_url = f"https://nowpayments.io/payment/?iid={payment_id}"
+            print(f"⚠️ URL manquante, solution de secours générée : {invoice_url}")
 
         payments_store[payment_id] = {
             'user_id': temp_user_id,
@@ -531,7 +523,6 @@ def generate_pdf_report(uid, analysis_data, is_paid=False):
         pdf.cell(0, 8, 'CONTENU EXCLUSIF MASQUE', ln=True)
         pdf.set_font('Arial', '', 10)
         pdf.set_text_color(0)
-        # MISE À JOUR DU PRIX DANS LE PDF (19.99 EUR)
         locked_content = """
 Pour obtenir le plan d'action detaille permettant de recuperer ces gains, veuillez payer 19.99 EUR via crypto-monnaie.
 
