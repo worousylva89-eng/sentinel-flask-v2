@@ -429,7 +429,9 @@ function initFormLogic() {
         resultsArea.innerHTML = html;
     }
 
-    // LOGIQUE DE PAIEMENT AMÉLIORÉE AVEC DÉBOGAGE COMPLET
+    // ==========================================================
+    // LOGIQUE DE PAIEMENT AVEC SOLUTION DE SECOURS (ID MANUEL)
+    // ==========================================================
     payNowBtn.addEventListener('click', async function() {
         if(!currentUid || !currentToken) return alert("Veuillez d'abord lancer l'analyse.");
         
@@ -453,7 +455,6 @@ function initFormLogic() {
                 })
             });
             
-            // Lecture brute de la réponse pour voir l'erreur exacte
             const responseText = await response.text();
             console.log("Réponse brute du serveur:", responseText);
             
@@ -468,12 +469,30 @@ function initFormLogic() {
                 return;
             }
             
-            if(data.status === 'success' && data.invoice_url) {
+            // ✅ CORRECTION FINALE : On vérifie juste si le statut est success, peu importe l'URL
+            if(data.status === 'success') {
                 sessionStorage.setItem('payment_id', data.payment_id);
-                window.location.href = data.invoice_url;
+                
+                if(data.invoice_url) {
+                    // Cas normal : redirection automatique
+                    window.location.href = data.invoice_url;
+                } else {
+                    // Cas de secours : NowPayments ne donne pas l'URL, on donne l'ID au client
+                    alert(
+                        "⚠️ Paiement créé avec succès !\n\n" +
+                        "Votre ID de paiement est : " + data.payment_id + "\n\n" +
+                        "Étapes pour payer :\n" +
+                        "1. Allez sur : https://nowpayments.io/payment\n" +
+                        "2. Entrez cet ID dans le champ 'Payment ID' : " + data.payment_id + "\n" +
+                        "3. Choisissez votre crypto (ex: USDT TRC20)\n" +
+                        "4. Effectuez le paiement de 19.99 EUR\n\n" +
+                        "Une fois payé, revenez ici et votre rapport se débloquera automatiquement !"
+                    );
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                }
             } else {
                 console.error("Erreur détaillée renvoyée par le serveur:", data);
-                // MODIFICATION ICI : Afficher TOUTE la réponse JSON pour voir ce qui manque
                 alert("Erreur lors de la création du paiement:\n\n" + JSON.stringify(data, null, 2));
                 this.innerHTML = originalText;
                 this.disabled = false;
