@@ -288,7 +288,8 @@ def create_crypto_charge():
         print(f"Réponse brute de NowPayments: {response.text}")
         print("--- FIN DEBUG NOWPAYMENTS ---")
 
-        if response.status_code != 200:
+        # ✅ CORRECTION : NowPayments retourne 201 (Created) pour les paiements créés avec succès
+        if response.status_code not in [200, 201]:
             return jsonify({
                 "error": f"Erreur NowPayments ({response.status_code}): {response.text}"
             }), response.status_code
