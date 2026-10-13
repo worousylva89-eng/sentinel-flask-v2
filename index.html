@@ -27,18 +27,19 @@
         .premium-upload-box:hover { background: #c8e6c9; transform: translateY(-2px); }
         .btn-primary-large { background: #2e7d32; color: white; border: none; padding: 15px 20px; font-size: 1.1em; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 15px; width: 100%; transition: background 0.2s; }
         .btn-primary-large:hover { background: #1b5e20; }
+        .btn-primary-large:disabled { background: #a5d6a7; cursor: not-allowed; }
         
         /* Textareas Agrandies */
         .input-wrapper { margin-bottom: 15px; }
         textarea.audit-textarea { 
             width: 100%; 
-            height: 180px; /* Plus haut */
+            height: 180px; 
             padding: 15px; 
             border: 2px solid #ddd; 
             border-radius: 8px; 
             resize: vertical; 
             font-family: 'Courier New', Courier, monospace; 
-            font-size: 1em; /* Police plus grosse */
+            font-size: 1em; 
             box-sizing: border-box; 
             background: #fafafa;
             line-height: 1.5;
@@ -59,7 +60,7 @@
         .tags-cloud { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
         .tag { background:#ffe0b2; padding:2px 8px; border-radius:12px; font-size:0.8em; font-weight:bold; color:#e65100; }
 
-        /* Guide Pas-à-Pas (NOUVEAU) */
+        /* Guide Pas-à-Pas */
         .guide-box {
             background: #e3f2fd;
             border-left: 4px solid #2196f3;
@@ -86,15 +87,12 @@
         .summary-card p { margin: 8px 0; font-size: 1em; }
         .pay-section { margin-top: 25px; padding-top: 20px; border-top: 2px solid #eee; text-align: center; display: none; animation: slideUp 0.5s; }
         .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; vertical-align: middle; margin-right: 10px; }
+        .spinner-dark { border: 3px solid rgba(26, 35, 126, 0.1); border-top-color: #1a237e; }
         
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .footer-note { font-size: 0.8em; color: #888; margin-top: 20px; text-align: center; }
-
-        /* Style WhatsApp Button */
-        .btn-whatsapp { background: #25D366 !important; color: white; }
-        .btn-whatsapp:hover { background: #1ebe57 !important; }
         
         /* NOUVEAU : Lien Téléchargement Gratuit Stylisé */
         .download-link-btn { 
@@ -110,6 +108,17 @@
             transition: background 0.2s;
         }
         .download-link-btn:hover { background: #0d155e !important; }
+
+        /* NOUVEAU : Bouton Crypto Premium */
+        .btn-crypto-pay {
+            background: linear-gradient(135deg, #6f42c1 0%, #1a237e 100%) !important;
+            color: white !important;
+            box-shadow: 0 4px 15px rgba(111, 66, 193, 0.3);
+        }
+        .btn-crypto-pay:hover {
+            background: linear-gradient(135deg, #5a32a3 0%, #0d155e 100%) !important;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body>
@@ -129,7 +138,7 @@
         </div>
         
         <div class="mode-selector">
-            <button id="btnModeClassicFile" class="btn-mode active" onclick="switchAuditMode('classic_file')">📂 Relevé Bancaire<br>(CSV/PDF)</button>
+            <button id="btnModeClassicFile" class="btn-mode active" onclick="switchAuditMode('classic_file')">📂 Relevé Bancaire<br>(CSV/TXT)</button>
             <button id="btnModeDigitalText" class="btn-mode" onclick="switchAuditMode('digital_text')">💸 Wallets &<br>Trading Global</button>
             <button id="btnModeManual" class="btn-mode" onclick="switchAuditMode('manual_simple')">✍️ Saisie<br>Manuelle Rapide</button>
         </div>
@@ -149,8 +158,6 @@
 
         <!-- ZONE 2 : SAISIE DIGITALE / WALLET (MONDE ENTIER) -->
         <div id="zoneDigitalText" class="audit-zone">
-            
-            <!-- GUIDE VISUEL INTUITIF (AJOUT CRUCIAL) -->
             <div class="guide-box">
                 <h4>📱 Comment récupérer vos frais cachés ?</h4>
                 <ol>
@@ -165,7 +172,6 @@
             <div class="input-wrapper">
                 <textarea id="digitalDataInput" class="audit-textarea" placeholder="Exemple MTN MoMo :&#10;Retrait Cash,-500.00&#10;Frais Service Retrait,-2.50&#10;Transfert Ami,-100.00&#10;Commission Transfert,-1.00&#10;&#10;Exemple Binance :&#10;Trading Fee BTC/USDT,-0.05&#10;Withdrawal Cost ETH,-1.20"></textarea>
                 
-                <!-- LISTE DES RÉSEAUX SUPPORTÉS -->
                 <div class="network-list">
                     <strong>✅ Où trouver ces infos ?</strong>
                     <div class="tags-cloud">
@@ -184,7 +190,7 @@
         <div id="zoneManualSimple" class="audit-zone">
             <div class="input-wrapper">
                 <textarea id="manualDataInput" class="audit-textarea" placeholder="Collez ici vos abonnements connus ou dépenses récurrentes...&#10;&#10;Format simple : Libellé,Montant&#10;&#10;Exemple :&#10;NETFLIX PREMIUM,-17.99&#10;CARREFOUR MARKET,-50.00&#10;SPOTIFY FAMILY,-14.99&#10;ASSURANCE AUTO AXA,-45.00"></textarea>
-                <div class="manual-hint" style="color:#666; font-size:0.9em;">💡 Idéal si vous n'avez pas de fichier CSV sous la main. Une ligne par transaction.</div>
+                <div class="manual-hint" style="color:#666; font-size:0.9em; margin-top:10px;">💡 Idéal si vous n'avez pas de fichier CSV sous la main. Une ligne par transaction.</div>
             </div>
         </div>
 
@@ -198,108 +204,121 @@
         <!-- AFFICHAGE DU RÉSULTAT PRÉLIMINAIRE -->
         <div id="resultsArea"></div>
 
-        <!-- SECTION PAIEMENT STROKE -->
+        <!-- SECTION PAIEMENT CRYPTO (REMPLACE WHATSAPP) -->
         <div id="payButtonContainer" class="pay-section">
             <h3 style="color:#d32f2f;">💰 Votre Potentiel de Gain Identifié</h3>
-            <p>Pour obtenir le rapport détaillé et le plan d'action complet :</p>
+            <p>Pour obtenir le rapport détaillé, les scripts de résiliation et le plan d'action complet :</p>
             
-            <!-- CORRECTION : LIEN DIRECT AU LIEU D'UN BOUTON JS COMPLEXE -->
             <a id="downloadFreePdfLink" href="#" class="download-link-btn" target="_blank">
                 📥 Télécharger Mon Aperçu Gratuit (PDF)
             </a>
 
-            <button id="payNowBtn" class="btn-primary-large btn-whatsapp">
-                💬 Acheter Le Plan D'Action Complet Sur WhatsApp
+            <button id="payNowBtn" class="btn-primary-large btn-crypto-pay">
+                🔓 Débloquer le Rapport Complet - 9.99€ (Crypto)
             </button>
+            <p style="font-size: 0.8em; color: #666; margin-top: 10px;">
+                Paiement 100% sécurisé, anonyme et mondial via Bitcoin, Ethereum, USDC, etc.
+            </p>
         </div>
 
         <div class="footer-note">
-            Vos données sont traitées localement puis supprimées après analyse. Confidentialité garantie.
+            Vos données sont traitées de manière sécurisée. Confidentialité garantie.
         </div>
     </div>
     
-    <!-- ZONE DE SUCCÈS (Cachée par défaut) -->
+    <!-- ZONE DE SUCCÈS (Cachée par défaut, affichée après paiement) -->
     <div id="successView" style="display:none;"></div>
 </div>
 
 <script>
-// --- INITIALISATION & DÉTECTION RETOUR STRIPE ---
+// --- INITIALISATION & DÉTECTION RETOUR PAIEMENT ---
 window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
     const status = urlParams.get('status');
+    const chargeCode = urlParams.get('charge_code');
     
-    if(status === 'paid') {
-        showSuccessScreen();
+    // Si l'utilisateur revient de Coinbase après un paiement
+    if(status === 'paid' && chargeCode) {
+        showSuccessScreen(chargeCode);
     } else {
-        initFormLogic(); // Lance les écouteurs normaux seulement si on n'est pas en mode succès
+        initFormLogic(); // Lance les écouteurs normaux
     }
 };
 
-function showSuccessScreen() {
+async function showSuccessScreen(chargeCode) {
     const formContent = document.getElementById('formContent');
     const successView = document.getElementById('successView');
     
     if(formContent) formContent.style.display = 'none';
     
-    // Récupère l'UID et le Token depuis sessionStorage ou l'URL
-    const uid = sessionStorage.getItem('audit_uid') || 'unknown';
-    let token = sessionStorage.getItem('audit_token');
-    
-    if(!token && window.location.href.includes('token=')) {
-        const params = new URLSearchParams(window.location.search);
-        token = params.get('token');
-    }
-
-    const reportLink = `/download-report/${uid}${token ? '?token=' + encodeURIComponent(token) : ''}`;
-
     successView.innerHTML = `
-        <div class="success-container">
-            <span class="success-icon">✅</span>
-            <h2 class="success-title">Paiement Reçu !</h2>
-            <p class="success-desc">Merci ! Votre transaction est validée.<br>Votre rapport PDF est prêt à être téléchargé.</p>
+        <div style="text-align:center; padding: 40px 20px;">
+            <span style="font-size: 4em;">✅</span>
+            <h2 style="color: #1a237e; margin-top: 20px;">Paiement Confirmé !</h2>
+            <p style="color: #555; margin-bottom: 30px;">Merci ! Votre transaction crypto est validée.<br>Votre rapport PDF complet est en cours de génération.</p>
             
-            <a href="${reportLink}" class="btn-primary-large" style="display:block; text-decoration:none; background:#d32f2f; margin-top:15px; font-size:1.2em; padding:20px;" target="_blank">
-                📥 TÉLÉCHARGER MON RAPPORT PDF COMPLET
+            <div id="loadingReport" style="display:block; margin: 20px 0;">
+                <span class="spinner spinner-dark"></span> Vérification sécurisée et préparation du fichier...
+            </div>
+
+            <a id="finalDownloadLink" href="#" class="btn-primary-large" style="display:none; text-decoration:none; background:#2e7d32; margin-top:15px; font-size:1.2em; padding:20px;" target="_blank">
+                📥 TÉLÉCHARGER MON RAPPORT COMPLET
             </a>
             
-            <small style="display:block; margin-top:15px; color:#666;">
-                * Le fichier s'enregistrera automatiquement dans votre dossier "Téléchargements".
-            </small>
-
-            <button onclick="location.href='/'" class="btn-reset" style="margin-top:20px;">
+            <button onclick="location.href='/'" class="btn-reset" style="margin-top:30px; background: #f0f0f0; color: #333; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold;">
                 🔄 Faire un autre audit
             </button>
         </div>
     `;
     successView.style.display = 'block';
+
+    // Interroger le backend pour obtenir le lien de téléchargement sécurisé
+    try {
+        const res = await fetch(`/check-payment/${chargeCode}`);
+        const data = await res.json();
+        
+        document.getElementById('loadingReport').style.display = 'none';
+        
+        if(data.status === 'paid' && data.report_url) {
+            const downloadBtn = document.getElementById('finalDownloadLink');
+            downloadBtn.href = data.report_url;
+            downloadBtn.style.display = 'block';
+            
+            // Déclencher le téléchargement automatiquement après 1 seconde
+            setTimeout(() => {
+                window.open(data.report_url, '_blank');
+            }, 1000);
+        } else {
+            document.getElementById('loadingReport').innerHTML = `<p style='color:red;'>Erreur : Paiement non trouvé. Contactez le support avec le code : <strong>${chargeCode}</strong></p>`;
+        }
+    } catch(e) {
+        console.error(e);
+        document.getElementById('loadingReport').innerHTML = "<p style='color:red;'>Erreur de vérification réseau. Veuillez rafraîchir la page.</p>";
+    }
 }
 
-// --- LOGIQUE NORMALE DU FORMULAIRE (VERSION FIXÉE) ---
+// --- LOGIQUE NORMALE DU FORMULAIRE ---
 function initFormLogic() {
-    const inputElement = document.getElementById('bankStatementInput'); // Zone 1
-    const digitalTextarea = document.getElementById('digitalDataInput'); // Zone 2
-    const manualTextarea = document.getElementById('manualDataInput'); // Zone 3
+    const inputElement = document.getElementById('bankStatementInput');
+    const digitalTextarea = document.getElementById('digitalDataInput');
+    const manualTextarea = document.getElementById('manualDataInput');
     
     const fileNameDisplay = document.getElementById('fileNameDisplay');
     const startBtn = document.getElementById('startAnalysisBtn');
     const resultsArea = document.getElementById('resultsArea');
     const paySection = document.getElementById('payButtonContainer');
     const payNowBtn = document.getElementById('payNowBtn');
-    const downloadLink = document.getElementById('downloadFreePdfLink'); // NOUVEAU
+    const downloadLink = document.getElementById('downloadFreePdfLink');
     const modeHint = document.getElementById('modeHint');
 
     let currentUid = null; 
     let currentToken = null; 
-    let selectedAuditMode = 'classic_file'; // Valeur par défaut
+    let selectedAuditMode = 'classic_file';
 
-    // Fonctions de changement d'onglet (FIXÉE)
     window.switchAuditMode = function(mode) {
         selectedAuditMode = mode;
-        
-        // Mise à jour visuelle des boutons
         document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
         
-        // Mapping IDs corrects
         let targetBtnId = '';
         if(mode === 'classic_file') targetBtnId = 'btnModeClassicFile';
         else if(mode === 'digital_text') targetBtnId = 'btnModeDigitalText';
@@ -307,12 +326,10 @@ function initFormLogic() {
         
         if(targetBtnId) document.getElementById(targetBtnId).classList.add('active');
 
-        // Masquer toutes les zones
         document.getElementById('zoneClassicFile').classList.remove('visible');
         document.getElementById('zoneDigitalText').classList.remove('visible');
         document.getElementById('zoneManualSimple').classList.remove('visible');
 
-        // Afficher la zone correspondante
         if(mode === 'classic_file') {
             document.getElementById('zoneClassicFile').classList.add('visible');
             modeHint.innerText = "Idéal pour détecter Netflix, Sport, Assurance... via fichier exporté.";
@@ -323,14 +340,11 @@ function initFormLogic() {
             document.getElementById('zoneManualSimple').classList.add('visible');
             modeHint.innerText = "Copiez-collez simplement vos lignes d'abonnements connus.";
         }
-        
-        checkReadyState(); // Réinitialiser l'état du bouton
+        checkReadyState();
     };
 
-    // Activation/Désactivation du bouton selon ce qui est rempli dans LA ZONE ACTIVE
     function checkReadyState() {
         let hasData = false;
-        
         if(selectedAuditMode === 'classic_file') {
             hasData = inputElement.files.length > 0;
         } else if(selectedAuditMode === 'digital_text') {
@@ -348,7 +362,6 @@ function initFormLogic() {
         }
     }
 
-    // Écouteurs événements spécifiques
     inputElement.addEventListener('change', function() {
         if(this.files.length > 0) {
             fileNameDisplay.textContent = `✅ Fichier sélectionné : ${this.files[0].name}`;
@@ -361,29 +374,22 @@ function initFormLogic() {
     digitalTextarea.addEventListener('input', checkReadyState);
     manualTextarea.addEventListener('input', checkReadyState);
 
-    // Logique de lancement Analyse (Adaptée aux 3 modes)
     startBtn.addEventListener('click', async function() {
-        this.innerText = "<span class='spinner'></span> Analyse en cours...";
+        this.innerHTML = "<span class='spinner'></span> Analyse en cours...";
         this.disabled = true;
         
         try {
             let response;
             const formData = new FormData();
-            
-            // Envoi du mode choisi au serveur
             formData.append('mode', selectedAuditMode); 
 
             if(selectedAuditMode === 'classic_file') {
                 formData.append('file', inputElement.files[0]);
-            } 
-            else if(selectedAuditMode === 'digital_text') {
-                // Convertit le texte collé en faux fichier CSV pour le backend
+            } else if(selectedAuditMode === 'digital_text') {
                 const blob = new Blob([digitalTextarea.value], { type: 'text/csv' });
                 const fileObj = new File([blob], "wallet_audit.csv", { type: "text/csv" });
                 formData.append('file', fileObj);
-            }
-            else if(selectedAuditMode === 'manual_simple') {
-                 // Convertit le texte collé en faux fichier CSV
+            } else if(selectedAuditMode === 'manual_simple') {
                 const blob = new Blob([manualTextarea.value], { type: 'text/csv' });
                 const fileObj = new File([blob], "manual_audit.csv", { type: "text/csv" });
                 formData.append('file', fileObj);
@@ -403,7 +409,6 @@ function initFormLogic() {
                 showQuickSummary(data.data.analysis_summary); 
                 paySection.style.display = 'block';
 
-                // ✅ MISE À JOUR DU LIEN DE TÉLÉCHARGEMENT ICI
                 if(downloadLink && currentUid && currentToken) {
                     const pdfUrl = `/download-report/${currentUid}?token=${encodeURIComponent(currentToken)}`;
                     downloadLink.href = pdfUrl;
@@ -415,14 +420,13 @@ function initFormLogic() {
             console.error(err);
             alert("Problème réseau. Réessayez.");
         } finally {
-            this.innerText = "⚡ Lancer l'Analyse IA (Gratuit)";
+            this.innerHTML = "⚡ Lancer l'Analyse IA (Gratuit)";
             this.disabled = false;
             checkReadyState(); 
         }
     });
 
     function showQuickSummary(summary) {
-        // Adaptation dynamique du titre selon le mode
         let title = summary.scan_mode === 'PLATFORM_DIGITAL_AUDIT' ? "📊 Audit Digital (Wallets/Fees)" : "📊 Rapport Préliminaire Gratuit";
         let lossLabel = summary.scan_mode === 'PLATFORM_DIGITAL_AUDIT' ? summary.annual_leak_projected : summary.yearly_loss_projected;
         
@@ -432,25 +436,48 @@ function initFormLogic() {
             <p>Anomalies détectées : <strong>${summary.subscriptions_detected || summary.hidden_costs_detected}</strong></p>
             <hr style="border:0; border-top:1px solid #ffe0b2; margin:10px 0;">
             <p style="font-size:1.2em; margin:0;">Perte annuelle estimée : <span style='color:red;font-weight:bold;'>${lossLabel} €</span></p>
-            <small style="display:block; margin-top:10px; color:#666;">Validez votre audit complet ci-dessous pour recevoir le détail ligne par ligne.</small>
+            <small style="display:block; margin-top:10px; color:#666;">Validez votre audit complet ci-dessous pour recevoir le détail ligne par ligne et les scripts de résiliation.</small>
         </div>`;
         resultsArea.innerHTML = html;
     }
 
-    // Bouton Paiement Stripe -> WHATSAPP
-    payNowBtn.addEventListener('click', () => {
-        if(!currentUid || !currentToken) return alert("Erreur interne");
+    // NOUVEAU : Logique de Paiement Crypto
+    payNowBtn.addEventListener('click', async function() {
+        if(!currentUid || !currentToken) return alert("Veuillez d'abord lancer l'analyse.");
         
-        const lossAmount = sessionStorage.getItem('audit_yearly_loss') || "plusieurs centaines"; 
-        
-        const defaultMessage = `Bonjour Sentinel Finance ! \n\nMon audit révèle une perte potentielle de : ${lossAmount} €/an.\n\nJe veux acheter mon RAPPORT D'AUDIT COMPLET.\n\n⚠️ Je comprends que cet outil m'identifie MES FUITES D'ARGENT et me donne un PLAN D'ACTION PERSONNALISÉ pour les arrêter moi-même (résiliations, changements d'opérateurs, etc.). Vous ne transférez pas d'argent directement sur mon compte.\n\nEnvoyez-moi le lien de paiement sécurisé svp.`;
-        
-        // ⚠️ METS TON VRAI NUMÉRO ICI (Format international sans + ni espaces)
-        const myPhoneNumber = "2290167320139"; 
-        
-        const whatsappUrl = `https://wa.me/${myPhoneNumber}?text=${encodeURIComponent(defaultMessage)}`;
-        
-        window.open(whatsappUrl, '_blank');
+        const originalText = this.innerHTML;
+        this.innerHTML = "<span class='spinner'></span> Préparation du paiement sécurisé...";
+        this.disabled = true;
+
+        try {
+            const response = await fetch('/create-crypto-charge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    temp_user_id: currentUid,
+                    report_token: currentToken,
+                    email: 'client@sentinel.global' // Email par défaut, peut être rendu dynamique si besoin
+                })
+            });
+            
+            const data = await response.json();
+            
+            if(data.status === 'success' && data.hosted_url) {
+                // Sauvegarder le code de charge pour la vérification au retour
+                sessionStorage.setItem('charge_code', data.charge_code);
+                // Rediriger l'utilisateur vers la page de paiement Coinbase Commerce
+                window.location.href = data.hosted_url;
+            } else {
+                alert("Erreur lors de la création du paiement: " + (data.error || "Inconnue"));
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }
+        } catch(err) {
+            console.error(err);
+            alert("Problème réseau. Réessayez.");
+            this.innerHTML = originalText;
+            this.disabled = false;
+        }
     });
 }
 </script>
